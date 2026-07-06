@@ -10,7 +10,7 @@
   "tilewidth": 16,
   "tileheight": 16,
   "nextlayerid": 4,
-  "nextobjectid": 2,
+  "nextobjectid": 3,
   "tilesets": [
     {
       "firstgid": 1,
@@ -1284,6 +1284,17 @@
           "y": 72,
           "width": 0,
           "height": 0,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 2,
+          "name": "trigger-template",
+          "type": "",
+          "x": 224,
+          "y": 160,
+          "width": 32,
+          "height": 32,
           "rotation": 0,
           "visible": true
         }

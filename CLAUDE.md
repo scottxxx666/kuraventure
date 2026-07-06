@@ -6,9 +6,11 @@ Pixel RPG web game built with Phaser 3.90 + TypeScript + Vite.
 product decisions, implementation milestones, and open questions. Where PLAN.md marks
 something **TBD**, ask the user; do not guess.
 
-Status: milestone 2 (world core + input) done — menu starts the demo stage; player
-walks/collides via `InputService` (keyboard + virtual pad). Next: PLAN.md milestone 3
-(activity flow).
+Status: milestone 3 (activity flow) done — walking into a trigger zone pauses
+`WorldScene`, runs the mini-game (`MiniGameScene` contract + `TemplateMiniGame`),
+and `FlowDirector` records the flag and resumes; consumed `once` triggers disappear.
+`ProgressService` is in-memory only so far. Next: PLAN.md milestone 4 (progress &
+unlocking — localStorage persistence, StageSelectScene, spine + branch demo stages).
 
 ## Dev notes
 
