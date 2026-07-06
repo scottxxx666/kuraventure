@@ -16,6 +16,9 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     parent: 'game-container',
     backgroundColor: '#000000',
     pixelArt: true,
+    physics: {
+        default: 'arcade'
+    },
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH

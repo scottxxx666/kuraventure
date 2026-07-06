@@ -1,11 +1,22 @@
 import Phaser from 'phaser';
 import { gameConfig } from './config/gameConfig';
+import { flowDirector } from './core/FlowDirector';
+import { inputService } from './input/InputService';
+import { KeyboardSource } from './input/KeyboardSource';
+import { createVirtualPadIfTouch } from './input/VirtualPadSource';
 import { BootScene } from './scenes/BootScene';
 import { MainMenuScene } from './scenes/MainMenuScene';
 import { PreloadScene } from './scenes/PreloadScene';
+import { WorldScene } from './scenes/WorldScene';
 
 // Every scene (including future mini-game scenes) is registered here — see PLAN.md §3.1.
-new Phaser.Game({
+const game = new Phaser.Game({
     ...gameConfig,
-    scene: [BootScene, PreloadScene, MainMenuScene]
+    scene: [BootScene, PreloadScene, MainMenuScene, WorldScene]
 });
+
+flowDirector.init(game);
+
+// Input sources feed the one InputService; gameplay reads only the service (PLAN.md §3.10).
+new KeyboardSource(inputService);
+createVirtualPadIfTouch(inputService);

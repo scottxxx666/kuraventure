@@ -14,3 +14,68 @@ body {
     width: 100%;
     height: 100%;
 }
+
+/* DOM overlay above the canvas (src/ui/domOverlay.ts); interactive children
+   opt back into pointer events. */
+#ui-overlay {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 10;
+}
+
+/* Virtual gamepad (src/input/VirtualPadSource.ts), touch devices only. */
+.vpad-stick {
+    position: absolute;
+    left: 24px;
+    bottom: 24px;
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    pointer-events: auto;
+    touch-action: none;
+}
+
+.vpad-knob {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 40px;
+    height: 40px;
+    margin: -20px 0 0 -20px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+}
+
+.vpad-buttons {
+    position: absolute;
+    right: 24px;
+    bottom: 24px;
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+}
+
+.vpad-button {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.6);
+    font: 20px monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.vpad-button[data-down='true'] {
+    background: rgba(255, 255, 255, 0.35);
+}
