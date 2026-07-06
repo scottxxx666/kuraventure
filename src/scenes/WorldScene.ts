@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { GAME_WIDTH } from '../config/gameConfig';
 import type { StageDef, TriggerDef } from '../config/stages';
 import { eventBus } from '../core/EventBus';
 import { inputService } from '../input/InputService';
@@ -31,6 +32,7 @@ export class WorldScene extends Phaser.Scene {
     private stage!: StageDef;
     private player!: Phaser.Physics.Arcade.Sprite;
     private triggerZones: TriggerZone[] = [];
+    private advanceUnsubscribe: (() => void) | null = null;
 
     constructor() {
         super(SceneKeys.World);
@@ -83,10 +85,23 @@ export class WorldScene extends Phaser.Scene {
         const onResume = (): void => this.refreshTriggers();
         this.events.on(Phaser.Scenes.Events.RESUME, onResume);
 
+        const offStageComplete = eventBus.on('stage:complete', ({ stageId }) => {
+            if (stageId === this.stage.id) {
+                this.showStageCompletePrompt();
+            }
+        });
+        // Replaying an already-complete stage: offer the way out immediately.
+        if (progressService.isStageComplete(this.stage.id)) {
+            this.showStageCompletePrompt();
+        }
+
         setVirtualPadVisible(true);
         // scene.events listeners survive scene restarts — remove them explicitly.
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
             this.events.off(Phaser.Scenes.Events.RESUME, onResume);
+            offStageComplete();
+            this.advanceUnsubscribe?.();
+            this.advanceUnsubscribe = null;
             setVirtualPadVisible(false);
         });
     }
@@ -133,6 +148,28 @@ export class WorldScene extends Phaser.Scene {
             const marker = this.add.rectangle(cx, cy, w, h, 0xffd700, 0.3);
             this.triggerZones.push({ def, flagId, zone, marker, armed: true });
         }
+    }
+
+    /** Placeholder Phaser text until milestone 5 moves screen-space text to the DOM overlay. */
+    private showStageCompletePrompt(): void {
+        if (this.advanceUnsubscribe) {
+            return;
+        }
+        this.add
+            .text(GAME_WIDTH / 2, 12, 'Stage complete! Press A to continue', {
+                fontFamily: 'monospace',
+                fontSize: '10px',
+                color: '#ffe27a',
+                backgroundColor: '#00000080'
+            })
+            .setOrigin(0.5)
+            .setScrollFactor(0);
+        this.advanceUnsubscribe = inputService.onPress('A', () => {
+            // Not while paused: the same physical button also drives the running activity.
+            if (this.scene.isActive()) {
+                eventBus.emit('stage:advance', { stageId: this.stage.id });
+            }
+        });
     }
 
     private refreshTriggers(): void {

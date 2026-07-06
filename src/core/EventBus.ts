@@ -10,6 +10,10 @@ export interface GameEvents {
     'activity:start': { stageId: string; trigger: TriggerDef };
     /** The running activity finished; FlowDirector records the flag and resumes the world. */
     'activity:complete': { flagId: string; result?: unknown };
+    /** Every required trigger of the stage is complete; WorldScene shows the advance prompt. */
+    'stage:complete': { stageId: string };
+    /** Player confirmed the prompt; FlowDirector starts `next` or returns to stage select. */
+    'stage:advance': { stageId: string };
 }
 
 export type GameEventName = keyof GameEvents;

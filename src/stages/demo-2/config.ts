@@ -1,12 +1,12 @@
 import type { StageDef } from '../../config/stages';
 import { SceneKeys } from '../../scenes/keys';
 
-/** Placeholder spine head: completing it unlocks demo-2 (next) and demo-branch (unlockedBy). */
-export const demoStage: StageDef = {
-    id: 'demo',
-    titleKey: 'stage.demo.title',
-    tilemapKey: 'map-demo',
-    tilemapUrl: 'assets/maps/demo.json',
+/** Second spine stage; no `next` — completing it ends the spine (back to stage select). */
+export const demo2Stage: StageDef = {
+    id: 'demo-2',
+    titleKey: 'stage.demo-2.title',
+    tilemapKey: 'map-demo-2',
+    tilemapUrl: 'assets/maps/demo-2.json',
     spawn: { objectName: 'spawn' },
     triggers: [
         {
@@ -16,6 +16,5 @@ export const demoStage: StageDef = {
             required: true,
             once: true
         }
-    ],
-    next: 'demo-2'
+    ]
 };

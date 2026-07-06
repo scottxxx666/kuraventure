@@ -6,11 +6,15 @@ Pixel RPG web game built with Phaser 3.90 + TypeScript + Vite.
 product decisions, implementation milestones, and open questions. Where PLAN.md marks
 something **TBD**, ask the user; do not guess.
 
-Status: milestone 3 (activity flow) done — walking into a trigger zone pauses
-`WorldScene`, runs the mini-game (`MiniGameScene` contract + `TemplateMiniGame`),
-and `FlowDirector` records the flag and resumes; consumed `once` triggers disappear.
-`ProgressService` is in-memory only so far. Next: PLAN.md milestone 4 (progress &
-unlocking — localStorage persistence, StageSelectScene, spine + branch demo stages).
+Status: milestone 4 (progress & unlocking) done — `ProgressService` persists
+completion flags to localStorage (`kuraventure.progress.v1`, in-memory fallback on
+storage failure) and derives unlocked stages from the registry (`next` chain +
+`unlockedBy`); the menu opens `StageSelectScene` (unlocked stages, completed marked,
+replayable); finishing a stage's required triggers shows an advance prompt in
+`WorldScene` (A → `next` stage, or stage select at the end of the spine). Demo
+content: `demo` → `demo-2` spine plus `demo-branch` (`unlockedBy: ['demo']`).
+Next: PLAN.md milestone 5 (i18n) — **confirm the pixel font with the user first**
+(PLAN.md §3.7 / §5).
 
 ## Dev notes
 

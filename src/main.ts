@@ -8,12 +8,13 @@ import { BootScene } from './scenes/BootScene';
 import { MainMenuScene } from './scenes/MainMenuScene';
 import { TemplateMiniGame } from './scenes/minigames/_template/TemplateMiniGame';
 import { PreloadScene } from './scenes/PreloadScene';
+import { StageSelectScene } from './scenes/StageSelectScene';
 import { WorldScene } from './scenes/WorldScene';
 
 // Every scene (including future mini-game scenes) is registered here — see PLAN.md §3.1.
 const game = new Phaser.Game({
     ...gameConfig,
-    scene: [BootScene, PreloadScene, MainMenuScene, WorldScene, TemplateMiniGame]
+    scene: [BootScene, PreloadScene, MainMenuScene, StageSelectScene, WorldScene, TemplateMiniGame]
 });
 
 flowDirector.init(game);

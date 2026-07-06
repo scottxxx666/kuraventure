@@ -3,6 +3,7 @@ export const SceneKeys = {
     Boot: 'Boot',
     Preload: 'Preload',
     MainMenu: 'MainMenu',
+    StageSelect: 'StageSelect',
     World: 'World',
     TemplateMiniGame: 'TemplateMiniGame'
 } as const;

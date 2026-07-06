@@ -54,7 +54,8 @@ export class InputService implements GameInput {
             set.delete(button);
         }
         if (!wasDown && this.isDown(button)) {
-            for (const cb of this.pressListeners[button]) {
+            // Copy so a listener subscribing/unsubscribing mid-press doesn't hear this press.
+            for (const cb of [...this.pressListeners[button]]) {
                 cb();
             }
         }

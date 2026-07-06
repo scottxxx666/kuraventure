@@ -17,7 +17,7 @@ function makeDirector() {
         resume: vi.fn()
     };
     const bus = new EventBus();
-    const progress = new ProgressService();
+    const progress = new ProgressService(null);
     const director = new FlowDirector(bus, progress);
     director.init({ scene: scenes } as unknown as Phaser.Game);
     return { director, bus, progress, scenes };
@@ -49,8 +49,20 @@ describe('FlowDirector.startStage', () => {
     });
 
     it('throws before init(game)', () => {
-        const director = new FlowDirector(new EventBus(), new ProgressService());
+        const director = new FlowDirector(new EventBus(), new ProgressService(null));
         expect(() => director.startStage('demo')).toThrow(/init\(game\)/);
+    });
+});
+
+describe('FlowDirector.openStageSelect', () => {
+    it('stops the running flow scene and starts StageSelect', () => {
+        const { director, scenes } = makeDirector();
+        scenes.isActive.mockImplementation((key: string) => key === SceneKeys.MainMenu);
+
+        director.openStageSelect();
+
+        expect(scenes.stop).toHaveBeenCalledWith(SceneKeys.MainMenu);
+        expect(scenes.start).toHaveBeenCalledWith(SceneKeys.StageSelect);
     });
 });
 
@@ -134,5 +146,63 @@ describe('FlowDirector completion handling', () => {
         // The director is idle again: new activities dispatch normally.
         bus.emit('activity:start', { stageId: 'demo', trigger: makeMiniGameTrigger() });
         expect(scenes.pause).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe('FlowDirector stage completion', () => {
+    /** Runs the stage's trigger through the activity lifecycle on the bus. */
+    function completeTrigger(bus: EventBus, stageId: string, trigger: TriggerDef): void {
+        bus.emit('activity:start', { stageId, trigger });
+        bus.emit('activity:complete', { flagId: `${stageId}/${trigger.id}` });
+    }
+
+    it('marks the stage complete and emits stage:complete when all required triggers finish', () => {
+        const { bus, progress } = makeDirector();
+        const onStageComplete = vi.fn();
+        bus.on('stage:complete', onStageComplete);
+
+        completeTrigger(bus, 'demo', makeMiniGameTrigger());
+
+        expect(progress.isStageComplete('demo')).toBe(true);
+        expect(onStageComplete).toHaveBeenCalledWith({ stageId: 'demo' });
+    });
+
+    it('does not re-announce completion when replaying a completed stage', () => {
+        const { bus } = makeDirector();
+        const onStageComplete = vi.fn();
+        bus.on('stage:complete', onStageComplete);
+
+        completeTrigger(bus, 'demo', makeMiniGameTrigger());
+        completeTrigger(bus, 'demo', makeMiniGameTrigger());
+
+        expect(onStageComplete).toHaveBeenCalledTimes(1);
+    });
+
+    it('completing a stage unlocks its next and unlockedBy stages', () => {
+        const { bus, progress } = makeDirector();
+
+        completeTrigger(bus, 'demo', makeMiniGameTrigger());
+
+        const unlocked = progress.getUnlockedStages().map((s) => s.id);
+        expect(unlocked).toEqual(['demo', 'demo-2', 'demo-branch']);
+    });
+
+    it('stage:advance starts the next spine stage', () => {
+        const { bus, scenes } = makeDirector();
+
+        bus.emit('stage:advance', { stageId: 'demo' });
+
+        expect(scenes.start).toHaveBeenCalledWith(
+            SceneKeys.World,
+            expect.objectContaining({ stage: expect.objectContaining({ id: 'demo-2' }) })
+        );
+    });
+
+    it('stage:advance returns to stage select when there is no next stage', () => {
+        const { bus, scenes } = makeDirector();
+
+        bus.emit('stage:advance', { stageId: 'demo-2' });
+
+        expect(scenes.start).toHaveBeenCalledWith(SceneKeys.StageSelect);
     });
 });

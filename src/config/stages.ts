@@ -1,4 +1,6 @@
 import { demoStage } from '../stages/demo/config';
+import { demo2Stage } from '../stages/demo-2/config';
+import { demoBranchStage } from '../stages/demo-branch/config';
 
 /**
  * Stage/activity config types + the stage registry (PLAN.md §3.2).
@@ -43,7 +45,7 @@ export interface StageDef {
     unlockedBy?: string[];
 }
 
-export const STAGES: StageDef[] = [demoStage];
+export const STAGES: StageDef[] = [demoStage, demo2Stage, demoBranchStage];
 
 export function getStageById(id: string): StageDef {
     const stage = STAGES.find((s) => s.id === id);

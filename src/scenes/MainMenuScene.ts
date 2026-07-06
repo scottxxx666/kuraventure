@@ -1,13 +1,11 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/gameConfig';
-import { STAGES } from '../config/stages';
 import { flowDirector } from '../core/FlowDirector';
 import { SceneKeys } from './keys';
 
 /**
  * Placeholder menu. Hardcoded English strings and Phaser text are temporary:
- * strings move to i18n/DOM overlay in milestone 5, and starting will go
- * through StageSelectScene in milestone 4.
+ * strings move to i18n/DOM overlay in milestone 5.
  */
 export class MainMenuScene extends Phaser.Scene {
     constructor() {
@@ -45,7 +43,7 @@ export class MainMenuScene extends Phaser.Scene {
                 return;
             }
             started = true;
-            flowDirector.startStage(STAGES[0].id);
+            flowDirector.openStageSelect();
         };
         this.input.keyboard?.once('keydown', onStart);
         this.input.once('pointerdown', onStart);
