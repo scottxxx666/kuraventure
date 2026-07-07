@@ -5,6 +5,7 @@ export const SceneKeys = {
     MainMenu: 'MainMenu',
     StageSelect: 'StageSelect',
     World: 'World',
+    Video: 'Video',
     TemplateMiniGame: 'TemplateMiniGame'
 } as const;
 

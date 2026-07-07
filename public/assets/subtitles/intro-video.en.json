@@ -1,0 +1,7 @@
+{
+    "cues": [
+        { "start": 500, "end": 2600, "text": "Deep in the archive, a sealed door hums." },
+        { "start": 3000, "end": 5200, "text": "No one has opened it in a hundred years." },
+        { "start": 5600, "end": 7800, "text": "Tonight, that changes." }
+    ]
+}

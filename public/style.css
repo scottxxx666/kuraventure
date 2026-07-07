@@ -147,6 +147,14 @@ html:lang(ja) #ui-overlay {
     padding: calc(var(--px) * 2px) calc(var(--px) * 4px);
 }
 
+/* Video skip button (src/scenes/VideoScene.ts): hidden until any key/pointer
+   reveals it; top-right, clear of the subtitle bar and thumb corners. */
+.video-skip {
+    position: absolute;
+    top: calc(var(--px) * 6px);
+    right: calc(var(--px) * 6px);
+}
+
 /* Virtual gamepad (src/input/VirtualPadSource.ts), touch devices only. */
 .vpad-stick {
     position: absolute;

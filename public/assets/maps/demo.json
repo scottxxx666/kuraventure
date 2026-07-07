@@ -10,7 +10,7 @@
   "tilewidth": 16,
   "tileheight": 16,
   "nextlayerid": 4,
-  "nextobjectid": 3,
+  "nextobjectid": 4,
   "tilesets": [
     {
       "firstgid": 1,
@@ -1293,6 +1293,17 @@
           "type": "",
           "x": 224,
           "y": 160,
+          "width": 32,
+          "height": 32,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 3,
+          "name": "trigger-video",
+          "type": "",
+          "x": 416,
+          "y": 80,
           "width": 32,
           "height": 32,
           "rotation": 0,

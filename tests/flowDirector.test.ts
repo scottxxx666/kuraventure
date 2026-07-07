@@ -34,6 +34,22 @@ function makeMiniGameTrigger(overrides: Partial<TriggerDef> = {}): TriggerDef {
     };
 }
 
+function makeVideoTrigger(): TriggerDef {
+    return {
+        id: 'intro-video',
+        at: { objectName: 'trigger-video' },
+        activity: {
+            type: 'video',
+            videoKey: 'video-intro',
+            videoUrl: 'assets/video/intro.mp4',
+            subtitleTrackId: 'intro-video',
+            skippable: true
+        },
+        required: false,
+        once: false
+    };
+}
+
 describe('FlowDirector.startStage', () => {
     it('stops the running flow scene and starts WorldScene with the StageDef', () => {
         const { director, scenes } = makeDirector();
@@ -90,13 +106,28 @@ describe('FlowDirector activity dispatch', () => {
         expect(scenes.pause).toHaveBeenCalledTimes(1);
     });
 
-    it('rejects video activities until milestone 7', () => {
-        const { bus } = makeDirector();
-        const trigger = makeMiniGameTrigger({
-            activity: { type: 'video', videoKey: 'v', videoUrl: 'assets/video/v.mp4', skippable: true }
-        });
+    it('routes video activities into the generic VideoScene with { activity, flagId }', () => {
+        const { bus, scenes } = makeDirector();
+        const trigger = makeVideoTrigger();
 
-        expect(() => bus.emit('activity:start', { stageId: 'demo', trigger })).toThrow(/milestone 7/);
+        bus.emit('activity:start', { stageId: 'demo', trigger });
+
+        expect(scenes.pause).toHaveBeenCalledWith(SceneKeys.World);
+        expect(scenes.start).toHaveBeenCalledWith(SceneKeys.Video, {
+            activity: trigger.activity,
+            flagId: 'demo/intro-video'
+        });
+    });
+
+    it('stops VideoScene (not the activity sceneKey) when a video completes', () => {
+        const { bus, progress, scenes } = makeDirector();
+        bus.emit('activity:start', { stageId: 'demo', trigger: makeVideoTrigger() });
+
+        bus.emit('activity:complete', { flagId: 'demo/intro-video' });
+
+        expect(scenes.stop).toHaveBeenCalledWith(SceneKeys.Video);
+        expect(progress.isCompleted('demo/intro-video')).toBe(true);
+        expect(scenes.resume).toHaveBeenCalledWith(SceneKeys.World);
     });
 });
 

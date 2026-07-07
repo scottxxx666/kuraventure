@@ -56,13 +56,12 @@ export class FlowDirector {
         }
         const scenes = this.requireScenes();
         const { activity } = trigger;
-        if (activity.type === 'video') {
-            throw new Error('Video activities arrive in milestone 7 (PLAN.md §4)');
-        }
+        // Every video plays in the one generic VideoScene (PLAN.md §3.6).
+        const sceneKey = activity.type === 'video' ? SceneKeys.Video : activity.sceneKey;
         const flagId = `${stageId}/${trigger.id}`;
-        this.activeActivity = { sceneKey: activity.sceneKey, flagId, stageId };
+        this.activeActivity = { sceneKey, flagId, stageId };
         scenes.pause(SceneKeys.World);
-        scenes.start(activity.sceneKey, { activity, flagId });
+        scenes.start(sceneKey, { activity, flagId });
     }
 
     private onActivityComplete({ flagId }: { flagId: string }): void {

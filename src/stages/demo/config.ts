@@ -15,6 +15,20 @@ export const demoStage: StageDef = {
             activity: { type: 'minigame', sceneKey: SceneKeys.TemplateMiniGame },
             required: true,
             once: true
+        },
+        {
+            // Optional + repeatable so the video/skip/locales can be re-tested freely.
+            id: 'intro-video',
+            at: { objectName: 'trigger-video' },
+            activity: {
+                type: 'video',
+                videoKey: 'video-intro',
+                videoUrl: 'assets/video/intro.mp4',
+                subtitleTrackId: 'intro-video',
+                skippable: true
+            },
+            required: false,
+            once: false
         }
     ],
     next: 'demo-2'
