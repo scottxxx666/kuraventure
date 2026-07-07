@@ -6,6 +6,9 @@
     "video.skip": "跳過",
     "minigame.template.title": "範本小遊戲",
     "minigame.template.prompt": "按 A（Z / 空白鍵）結束",
+    "minigame.pizzaRun.failed": "失敗了！",
+    "minigame.pizzaRun.retry": "再試一次",
+    "minigame.pizzaRun.quit": "放棄",
     "stage.demo.title": "示範關卡",
     "stage.demo-2.title": "示範關卡 2",
     "stage.demo-branch.title": "分支關卡"

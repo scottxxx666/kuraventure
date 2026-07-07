@@ -6,6 +6,9 @@
     "video.skip": "건너뛰기",
     "minigame.template.title": "템플릿 미니게임",
     "minigame.template.prompt": "A (Z / 스페이스) 키로 종료",
+    "minigame.pizzaRun.failed": "실패!",
+    "minigame.pizzaRun.retry": "다시 도전",
+    "minigame.pizzaRun.quit": "포기",
     "stage.demo.title": "데모 스테이지",
     "stage.demo-2.title": "데모 스테이지 2",
     "stage.demo-branch.title": "분기 스테이지"

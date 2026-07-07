@@ -120,6 +120,11 @@ html:lang(ja) #ui-overlay {
     padding: calc(var(--px) * 2px) calc(var(--px) * 4px);
 }
 
+/* Pizza Run fail banner (src/scenes/minigames/pizza-run/). */
+.pizza-run-failed {
+    color: #ff5a5a;
+}
+
 .minigame-title {
     font-size: calc(var(--px) * 12px);
 }

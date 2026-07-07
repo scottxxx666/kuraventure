@@ -193,6 +193,9 @@ binds names to activities, so level layout stays entirely in the map editor.
   `ProgressService.markCompleted(flagId)`, resume `WorldScene`. If the stage is now
   complete → mark the stage complete (unlocks branches / the `next` stage) and prompt
   advance to `next` (or return to StageSelect when there is no `next`).
+- On `activity:abort` (player quit the activity) → same as complete but the flag is
+  **not** recorded: stop the activity scene, resume `WorldScene`; the trigger stays
+  replayable.
 - After the final spine stage → an end/credits state (simple return to MainMenu for v1).
 
 ### 3.3 Mini-game Contract
@@ -205,6 +208,10 @@ export abstract class MiniGameScene extends Phaser.Scene {
 
   /** Subclasses MUST call this exactly once when the player finishes. */
   protected completeActivity(result?: unknown): void; // emits 'activity:complete' on EventBus
+
+  /** Player quit without finishing: resumes the world WITHOUT recording the flag.
+      A scene calls exactly one of completeActivity/abortActivity. */
+  protected abortActivity(): void; // emits 'activity:abort' on EventBus
 
   /** Timed in-game dialogue (SubtitleEngine + GameClock, pauses with the scene).
       Resolves when the track finishes. */
@@ -385,6 +392,10 @@ Remaining:
 8. **Real stages & mini-games** — **TBD: ask the user for the stage list (spine +
    branches), maps, and mini-game designs.** Each stage/mini-game is a separate
    milestone using §3.2/§3.3; content only, no core changes.
+   First real mini-game done: **Pizza Run** (`scenes/minigames/pizza-run/`, a port of
+   github.com/scottxxx666/izone-pizza-game), triggered from the demo stage; its art is
+   placeholder photos — see `public/assets/images/pizza-run/README.md` for
+   replacement sizes.
 9. **Polish** — responsive `Scale.FIT` tuning, transitions, audio, credits. TBD scope.
 
 **Do not run build/test/lint scripts — the user runs them manually.** Write tests;

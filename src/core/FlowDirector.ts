@@ -27,6 +27,7 @@ export class FlowDirector {
     ) {
         bus.on('activity:start', (payload) => this.onActivityStart(payload));
         bus.on('activity:complete', (payload) => this.onActivityComplete(payload));
+        bus.on('activity:abort', () => this.onActivityAbort());
         bus.on('stage:advance', ({ stageId }) => this.onStageAdvance(stageId));
     }
 
@@ -76,6 +77,17 @@ export class FlowDirector {
         // WorldScene refreshes trigger state (once-triggers disappear) on its RESUME event.
         scenes.resume(SceneKeys.World);
         this.checkStageCompletion(stageId);
+    }
+
+    /** Like onActivityComplete, but the flag is NOT recorded — the trigger stays replayable. */
+    private onActivityAbort(): void {
+        if (!this.activeActivity) {
+            return; // stale/duplicate abort; nothing to resume
+        }
+        const scenes = this.requireScenes();
+        scenes.stop(this.activeActivity.sceneKey);
+        this.activeActivity = null;
+        scenes.resume(SceneKeys.World);
     }
 
     private checkStageCompletion(stageId: string): void {

@@ -1,0 +1,278 @@
+import Phaser from 'phaser';
+import { GAME_HEIGHT, GAME_WIDTH } from '../../../config/dimensions';
+import { inputService } from '../../../input/InputService';
+import { i18nService } from '../../../services/I18nService';
+import { createOverlayElement } from '../../../ui/domOverlay';
+import { SceneKeys } from '../../keys';
+import { MiniGameScene } from '../MiniGameScene';
+import { difficultyFor } from './difficulty';
+
+/**
+ * Pizza Run — port of https://github.com/scottxxx666/izone-pizza-game.
+ * Run left/right, catch falling dumplings to fill the bar (full = win),
+ * touching a pizza fails: fail banner → ending video → Retry / Give up.
+ * At the last difficulty tier a boss patrols the sky deflecting pizzas.
+ * Current art is the original repo's photos — replacement sizes in
+ * public/assets/images/pizza-run/README.md.
+ */
+
+const PLAYER_SPEED = 140; // px/s left/right
+const BAR_TARGET = 20; // dumplings to fill the bar
+const DUMPLING_TICK_MS = 1000;
+const PIZZA_TICK_MS = 1200;
+const ITEM_DRIFT_X = 25; // max sideways velocity of falling items, px/s
+const BOSS_SPEED = 60;
+const BOSS_Y = 36;
+const PIZZA_DEFLECT_VELOCITY = -260; // boss knocks pizzas up off-screen
+const FAIL_BANNER_MS = 2000;
+const WIN_BEAT_MS = 300; // pause on the full bar before completing
+// Logical display sizes (the placeholder photos are much larger).
+const PLAYER_W = 16;
+const PLAYER_H = 24;
+const DUMPLING_SIZE = 12;
+const PIZZA_SIZE = 14;
+const BOSS_SIZE = 32;
+const BAR_W = 120;
+const BAR_H = 5;
+const BAR_Y = 8;
+
+const TEX_PLAYER = 'pizza-run-player';
+const TEX_DUMPLING = 'pizza-run-dumpling';
+const TEX_PIZZA = 'pizza-run-pizza';
+const TEX_BOSS = 'pizza-run-boss';
+const ENDING_VIDEO_KEY = 'pizza-run-ending';
+
+export class PizzaRunMiniGame extends MiniGameScene {
+    private player!: Phaser.Physics.Arcade.Sprite;
+    private dumplings!: Phaser.Physics.Arcade.Group;
+    private pizzas!: Phaser.Physics.Arcade.Group;
+    private boss: Phaser.Physics.Arcade.Sprite | null = null;
+    private barFill!: Phaser.GameObjects.Rectangle;
+    private spawnTimers: Phaser.Time.TimerEvent[] = [];
+    private caught = 0;
+    private ended = false;
+    private domNodes: HTMLElement[] = [];
+    private unsubscribers: (() => void)[] = [];
+
+    constructor() {
+        super(SceneKeys.PizzaRun);
+    }
+
+    preload(): void {
+        if (!this.textures.exists(TEX_PLAYER)) {
+            this.load.image(TEX_PLAYER, 'assets/images/pizza-run/player.png');
+            this.load.image(TEX_DUMPLING, 'assets/images/pizza-run/dumpling.png');
+            this.load.image(TEX_PIZZA, 'assets/images/pizza-run/pizza.png');
+            this.load.image(TEX_BOSS, 'assets/images/pizza-run/boss.png');
+        }
+        if (!this.cache.video.exists(ENDING_VIDEO_KEY)) {
+            this.load.video(ENDING_VIDEO_KEY, 'assets/video/pizza-run-ending.mp4');
+        }
+    }
+
+    create(): void {
+        // The same scene instance is reused across launches and restarts.
+        this.caught = 0;
+        this.ended = false;
+        this.boss = null;
+        this.spawnTimers = [];
+        this.domNodes = [];
+        this.unsubscribers = [];
+
+        this.cameras.main.setBackgroundColor('#1d2233');
+
+        this.player = this.physics.add.sprite(GAME_WIDTH / 2, GAME_HEIGHT - PLAYER_H / 2 - 2, TEX_PLAYER);
+        this.player.setDisplaySize(PLAYER_W, PLAYER_H).setCollideWorldBounds(true);
+
+        this.dumplings = this.physics.add.group();
+        this.pizzas = this.physics.add.group();
+        this.physics.add.overlap(this.player, this.dumplings, (_player, dumpling) =>
+            this.onDumplingCaught(dumpling as Phaser.Physics.Arcade.Sprite)
+        );
+        this.physics.add.overlap(this.player, this.pizzas, () => this.onPizzaHit());
+
+        // Progress bar (game-scene UI, no text → Phaser, not DOM — §3.8).
+        this.add
+            .rectangle(GAME_WIDTH / 2, BAR_Y, BAR_W + 2, BAR_H + 2)
+            .setStrokeStyle(1, 0xffffff);
+        this.barFill = this.add
+            .rectangle(GAME_WIDTH / 2 - BAR_W / 2, BAR_Y, BAR_W, BAR_H, 0x8fd18f)
+            .setOrigin(0, 0.5)
+            .setScale(0, 1);
+
+        this.spawnTimers = [
+            this.time.addEvent({ delay: DUMPLING_TICK_MS, loop: true, callback: () => this.spawnDumplings() }),
+            this.time.addEvent({ delay: PIZZA_TICK_MS, loop: true, callback: () => this.spawnPizzas() })
+        ];
+
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+            for (const el of this.domNodes) {
+                el.remove();
+            }
+            for (const off of this.unsubscribers) {
+                off();
+            }
+        });
+    }
+
+    update(): void {
+        if (this.ended) {
+            return;
+        }
+        const dx = inputService.direction().x;
+        this.player.setVelocity(dx * PLAYER_SPEED, 0);
+        if (dx !== 0) {
+            this.player.setFlipX(dx < 0);
+        }
+
+        this.cullOffscreen(this.dumplings);
+        this.cullOffscreen(this.pizzas);
+
+        if (!this.boss && difficultyFor(this.caught / BAR_TARGET).bossActive) {
+            this.spawnBoss();
+        }
+    }
+
+    private spawnDumplings(): void {
+        const count = Phaser.Math.Between(1, 2);
+        for (let i = 0; i < count; i++) {
+            this.spawnItem(this.dumplings, TEX_DUMPLING, DUMPLING_SIZE);
+        }
+    }
+
+    private spawnPizzas(): void {
+        const { pizzasPerTick } = difficultyFor(this.caught / BAR_TARGET);
+        for (let i = 0; i < pizzasPerTick; i++) {
+            this.spawnItem(this.pizzas, TEX_PIZZA, PIZZA_SIZE);
+        }
+    }
+
+    private spawnItem(group: Phaser.Physics.Arcade.Group, texture: string, size: number): void {
+        const { fallSpeedMin, fallSpeedMax } = difficultyFor(this.caught / BAR_TARGET);
+        const x = Phaser.Math.Between(size, GAME_WIDTH - size);
+        const item = group.create(x, -size, texture) as Phaser.Physics.Arcade.Sprite;
+        item.setDisplaySize(size, size).setVelocity(
+            Phaser.Math.Between(-ITEM_DRIFT_X, ITEM_DRIFT_X),
+            Phaser.Math.Between(fallSpeedMin, fallSpeedMax)
+        );
+    }
+
+    private cullOffscreen(group: Phaser.Physics.Arcade.Group): void {
+        for (const child of [...group.getChildren()]) {
+            const sprite = child as Phaser.Physics.Arcade.Sprite;
+            if (sprite.y > GAME_HEIGHT + BOSS_SIZE || sprite.y < -BOSS_SIZE) {
+                sprite.destroy();
+            }
+        }
+    }
+
+    /** Boss enters at the last tier and patrols the sky deflecting pizzas (like the original). */
+    private spawnBoss(): void {
+        this.boss = this.physics.add.sprite(BOSS_SIZE, BOSS_Y, TEX_BOSS);
+        this.boss
+            .setDisplaySize(BOSS_SIZE, BOSS_SIZE)
+            .setCollideWorldBounds(true)
+            .setBounce(1, 0)
+            .setVelocityX(BOSS_SPEED);
+        this.physics.add.overlap(this.boss, this.pizzas, (_boss, pizza) =>
+            (pizza as Phaser.Physics.Arcade.Sprite).setVelocityY(PIZZA_DEFLECT_VELOCITY)
+        );
+    }
+
+    private onDumplingCaught(dumpling: Phaser.Physics.Arcade.Sprite): void {
+        if (this.ended) {
+            return;
+        }
+        dumpling.destroy();
+        this.caught++;
+        this.barFill.setScale(Math.min(1, this.caught / BAR_TARGET), 1);
+        if (this.caught >= BAR_TARGET) {
+            this.ended = true;
+            this.freezePlay();
+            this.time.delayedCall(WIN_BEAT_MS, () => this.completeActivity());
+        }
+    }
+
+    private onPizzaHit(): void {
+        if (this.ended) {
+            return;
+        }
+        this.ended = true;
+        this.freezePlay();
+        this.player.setTint(0xff0000);
+
+        const banner = this.addOverlay('minigame-panel');
+        const text = document.createElement('div');
+        text.className = 'menu-title pizza-run-failed';
+        text.textContent = i18nService.t('minigame.pizzaRun.failed');
+        banner.appendChild(text);
+
+        this.time.delayedCall(FAIL_BANNER_MS, () => {
+            banner.remove();
+            this.playFailVideo();
+        });
+    }
+
+    private freezePlay(): void {
+        for (const timer of this.spawnTimers) {
+            timer.remove();
+        }
+        this.physics.pause();
+    }
+
+    private playFailVideo(): void {
+        const video = this.add.video(GAME_WIDTH / 2, GAME_HEIGHT / 2, ENDING_VIDEO_KEY).setDepth(100);
+        const fit = (): void => {
+            if (video.width > 0 && video.height > 0) {
+                const scale = Math.min(GAME_WIDTH / video.width, GAME_HEIGHT / video.height);
+                video.setDisplaySize(video.width * scale, video.height * scale);
+            }
+        };
+        video.on(Phaser.GameObjects.Events.VIDEO_METADATA, fit);
+        fit();
+
+        let done = false;
+        const finish = (): void => {
+            if (done) {
+                return;
+            }
+            done = true;
+            offSkip();
+            video.destroy();
+            this.showRetryMenu();
+        };
+        video.once(Phaser.GameObjects.Events.VIDEO_COMPLETE, finish);
+        video.once(Phaser.GameObjects.Events.VIDEO_ERROR, finish);
+        // The fail happens long after the trigger gesture, so the browser may
+        // refuse audible playback — Phaser signals that with VIDEO_LOCKED;
+        // muted autoplay is always allowed.
+        video.once(Phaser.GameObjects.Events.VIDEO_LOCKED, () => {
+            video.setMute(true);
+            video.play();
+        });
+        const offSkip = inputService.onPress('A', finish);
+        this.unsubscribers.push(offSkip);
+        video.play();
+    }
+
+    private showRetryMenu(): void {
+        const panel = this.addOverlay('minigame-panel');
+        const retry = document.createElement('button');
+        retry.className = 'menu-button';
+        retry.textContent = i18nService.t('minigame.pizzaRun.retry');
+        retry.addEventListener('click', () =>
+            this.scene.restart({ activity: this.activity, flagId: this.flagId })
+        );
+        const quit = document.createElement('button');
+        quit.className = 'menu-button';
+        quit.textContent = i18nService.t('minigame.pizzaRun.quit');
+        quit.addEventListener('click', () => this.abortActivity());
+        panel.append(retry, quit);
+    }
+
+    private addOverlay(className: string): HTMLDivElement {
+        const el = createOverlayElement(className);
+        this.domNodes.push(el);
+        return el;
+    }
+}

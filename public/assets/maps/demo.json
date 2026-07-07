@@ -10,7 +10,7 @@
   "tilewidth": 16,
   "tileheight": 16,
   "nextlayerid": 4,
-  "nextobjectid": 4,
+  "nextobjectid": 5,
   "tilesets": [
     {
       "firstgid": 1,
@@ -1293,6 +1293,17 @@
           "type": "",
           "x": 224,
           "y": 160,
+          "width": 32,
+          "height": 32,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 4,
+          "name": "trigger-pizza",
+          "type": "",
+          "x": 96,
+          "y": 240,
           "width": 32,
           "height": 32,
           "rotation": 0,

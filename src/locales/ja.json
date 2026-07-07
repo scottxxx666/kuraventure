@@ -6,6 +6,9 @@
     "video.skip": "スキップ",
     "minigame.template.title": "テンプレートミニゲーム",
     "minigame.template.prompt": "A（Z / スペース）で終了",
+    "minigame.pizzaRun.failed": "しっぱい！",
+    "minigame.pizzaRun.retry": "もう一度",
+    "minigame.pizzaRun.quit": "あきらめる",
     "stage.demo.title": "デモステージ",
     "stage.demo-2.title": "デモステージ 2",
     "stage.demo-branch.title": "分岐ステージ"

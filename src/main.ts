@@ -11,6 +11,7 @@ import { applyLocaleFont } from './ui/fonts';
 import { BootScene } from './scenes/BootScene';
 import { MainMenuScene } from './scenes/MainMenuScene';
 import { TemplateMiniGame } from './scenes/minigames/_template/TemplateMiniGame';
+import { PizzaRunMiniGame } from './scenes/minigames/pizza-run/PizzaRunMiniGame';
 import { PreloadScene } from './scenes/PreloadScene';
 import { StageSelectScene } from './scenes/StageSelectScene';
 import { VideoScene } from './scenes/VideoScene';
@@ -26,7 +27,8 @@ const game = new Phaser.Game({
         StageSelectScene,
         WorldScene,
         VideoScene,
-        TemplateMiniGame
+        TemplateMiniGame,
+        PizzaRunMiniGame
     ]
 });
 

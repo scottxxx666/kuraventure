@@ -60,4 +60,17 @@ export abstract class MiniGameScene extends Phaser.Scene {
         this.completed = true;
         eventBus.emit('activity:complete', { flagId: this.flagId, result });
     }
+
+    /**
+     * Emits activity:abort — the player quit without finishing. FlowDirector stops
+     * this scene and resumes the world WITHOUT recording the completion flag, so
+     * the trigger can be re-entered. A scene emits exactly one of complete/abort.
+     */
+    protected abortActivity(): void {
+        if (this.completed) {
+            return;
+        }
+        this.completed = true;
+        eventBus.emit('activity:abort', { flagId: this.flagId });
+    }
 }

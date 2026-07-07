@@ -6,7 +6,8 @@ export const SceneKeys = {
     StageSelect: 'StageSelect',
     World: 'World',
     Video: 'Video',
-    TemplateMiniGame: 'TemplateMiniGame'
+    TemplateMiniGame: 'TemplateMiniGame',
+    PizzaRun: 'PizzaRun'
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

@@ -17,6 +17,14 @@ export const demoStage: StageDef = {
             once: true
         },
         {
+            // Optional + repeatable (like intro-video) so it's freely replayable.
+            id: 'pizza-run',
+            at: { objectName: 'trigger-pizza' },
+            activity: { type: 'minigame', sceneKey: SceneKeys.PizzaRun },
+            required: false,
+            once: false
+        },
+        {
             // Optional + repeatable so the video/skip/locales can be re-tested freely.
             id: 'intro-video',
             at: { objectName: 'trigger-video' },

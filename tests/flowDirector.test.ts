@@ -180,6 +180,51 @@ describe('FlowDirector completion handling', () => {
     });
 });
 
+describe('FlowDirector abort handling', () => {
+    it('stops the activity scene and resumes the world WITHOUT recording the flag', () => {
+        const { bus, progress, scenes } = makeDirector();
+        bus.emit('activity:start', { stageId: 'demo', trigger: makeMiniGameTrigger() });
+
+        bus.emit('activity:abort', { flagId: 'demo/template-minigame' });
+
+        expect(scenes.stop).toHaveBeenCalledWith(SceneKeys.TemplateMiniGame);
+        expect(scenes.resume).toHaveBeenCalledWith(SceneKeys.World);
+        expect(progress.isCompleted('demo/template-minigame')).toBe(false);
+        expect(progress.isStageComplete('demo')).toBe(false);
+    });
+
+    it('does not emit stage:complete on abort', () => {
+        const { bus } = makeDirector();
+        const onStageComplete = vi.fn();
+        bus.on('stage:complete', onStageComplete);
+        bus.emit('activity:start', { stageId: 'demo', trigger: makeMiniGameTrigger() });
+
+        bus.emit('activity:abort', { flagId: 'demo/template-minigame' });
+
+        expect(onStageComplete).not.toHaveBeenCalled();
+    });
+
+    it('ignores activity:abort when no activity is running', () => {
+        const { bus, scenes } = makeDirector();
+
+        bus.emit('activity:abort', { flagId: 'demo/template-minigame' });
+
+        expect(scenes.stop).not.toHaveBeenCalled();
+        expect(scenes.resume).not.toHaveBeenCalled();
+    });
+
+    it('accepts a new activity after an abort (the trigger stays replayable)', () => {
+        const { bus, scenes } = makeDirector();
+        bus.emit('activity:start', { stageId: 'demo', trigger: makeMiniGameTrigger() });
+        bus.emit('activity:abort', { flagId: 'demo/template-minigame' });
+
+        bus.emit('activity:start', { stageId: 'demo', trigger: makeMiniGameTrigger() });
+
+        expect(scenes.start).toHaveBeenCalledTimes(2);
+        expect(scenes.pause).toHaveBeenCalledTimes(2);
+    });
+});
+
 describe('FlowDirector stage completion', () => {
     /** Runs the stage's trigger through the activity lifecycle on the bus. */
     function completeTrigger(bus: EventBus, stageId: string, trigger: TriggerDef): void {
