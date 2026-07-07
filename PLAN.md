@@ -1,50 +1,45 @@
-# Kuraventure — Pixel RPG Web Game: Architecture & Implementation Plan
+# Kuraventure — Architecture & Conventions
 
-> **Audience:** This document is the source of truth for the implementing agent (OPUS).
-> Follow it exactly. Where something is marked **TBD**, ask the user — do not guess.
+> Source of truth for architecture, confirmed product decisions, and remaining work.
+> The framework build-out (milestones 1–7) is **complete** — §3 describes how it
+> works and how content is added. Where something is marked **TBD**, ask the user;
+> do not guess. Section numbers (§3.x) are referenced from code comments — keep
+> them stable.
 
-## 1. Product Requirements (confirmed with user)
+## 1. Product Requirements (confirmed)
 
-1. Pixel-art RPG in the browser, built with **Phaser**.
-2. The game is a set of **stages**; each stage is a **tilemap the player explores**
-   (one reusable world scene, a different map per stage). Inside a stage, **triggers**
-   (zones / NPC interactions) launch **activities**: mini-games or cutscene videos.
-   Progression is **mostly linear with branches** — there is a default stage sequence,
-   but some stages are optional or can be done out of order. The stage list and
-   mini-game list are **TBD** — the architecture must let new stages, mini-games, and
-   videos be added without touching core code.
-3. **No save/load of gameplay state.** Only **completion flags** persist (completed
-   trigger/stage IDs in **localStorage** — never game state). Map state (door open,
-   trigger consumed) and stage unlocking are *derived* from the flags when a map loads.
-   A refresh loses mid-map position, never progress. The player can enter or replay any
-   unlocked stage from a stage-select screen.
-4. **Subtitles in multiple languages**: English (`en`), Traditional Chinese (`zh-TW`),
-   Japanese (`ja`), Korean (`ko`). Scope is **full UI + subtitles** — every visible
-   string goes through i18n.
-5. **Videos play as cutscenes**, triggered inside stages (or between them). Subtitles
-   must render over videos too.
-6. **Desktop AND mobile browsers.** One **virtual-gamepad input model** everywhere:
-   gameplay (world + every mini-game) uses only *direction + A/B action buttons*,
-   supplied by keyboard on desktop and an on-screen joystick + buttons on touch
-   devices. Menus/UI screens are tap/click (DOM) as normal. Mini-game designs must be
-   playable with D-pad + 1–2 buttons — no pointer-position gameplay (exceptions need
-   explicit user sign-off).
+- Pixel-art RPG in the browser, built with **Phaser**. The game is a set of
+  **stages** — each a Tiled map explored via one reusable world scene. **Triggers**
+  in a stage (zones / NPC interactions) launch **activities**: mini-games or
+  cutscene videos. Progression is mostly linear with branches. Adding stages,
+  mini-games, or videos never touches core code.
+- **No save/load of gameplay state.** Only completion flags persist (localStorage).
+  Map state (door open, trigger consumed) and stage unlocking are *derived* from
+  the flags. A refresh loses mid-map position, never progress; any unlocked stage
+  can be entered or replayed from stage select.
+- **Full UI + subtitle i18n**: `en`, `zh-TW`, `ja`, `ko`. Every visible string goes
+  through i18n; subtitles render over videos too.
+- **Desktop AND mobile browsers.** One virtual-gamepad input model everywhere:
+  gameplay uses only *direction + A/B* (keyboard on desktop, on-screen joystick +
+  buttons on touch). Menus/UI are tap/click DOM. Mini-games must be playable with
+  D-pad + 1–2 buttons — no pointer-position gameplay (exceptions need explicit
+  user sign-off).
 
-## 2. Confirmed Technical Decisions
+## 2. Technical Decisions (confirmed)
 
-| Decision | Choice | Rationale |
-|---|---|---|
-| Engine | **Phaser 3.90.0** (re-confirmed 2026-07-07: Phaser 4.x is stable now, but user chose to stay on 3.x) | Mature docs/ecosystem; every API in this plan validated against 3.x |
-| Canvas resolution | **320×180 logical** (confirmed 2026-07-07), `Scale.FIT` + integer art scale | Best mobile readability; divides 720p/1080p/4K exactly |
-| Language / bundler | **TypeScript + Vite** (official Phaser vite-ts template as starting point) | Typed contracts for stage/mini-game/subtitle/progress interfaces |
-| Progress persistence | **localStorage** completion flags (trigger/stage IDs only, versioned key) | Survives refresh; still "no save/load" of state |
-| Maps | **Tiled** JSON tilemaps, one per stage, loaded by a single reusable `WorldScene` | Data-driven stages; Phaser has first-class Tiled support |
-| Target devices / input | **Desktop + mobile.** Unified `InputService` (direction + A/B); keyboard on desktop, on-screen joystick + buttons on touch. Gameplay never reads pointer position; menus stay tappable. | Write input once; console-style controls fit the pixel-RPG feel |
-| Localization scope | **Full UI + subtitles**, `en`, `zh-TW`, `ja`, `ko` | User confirmed |
-| Pixel font strategy | **Fusion Pixel Font, 12px proportional** (CONFIRMED 2026-07-07; OFL-1.1, release 2026.07.01) with **per-locale glyph flavors** — latin / zh_hant / ja / ko woff2 (~700 KB each) in `public/assets/fonts/`, lazy-loaded per locale and swapped on locale change. Render at integer multiples of the 12px grid to stay crisp. | One family = identical look everywhere; per-locale flavors give each language its native Han glyph conventions, at no extra runtime download since only the active locale's file is fetched |
-| Text rendering | **DOM overlay** for screen-space text (subtitles, menus, HUD labels); **Phaser BitmapText/Text** for world-space text. See §3.8 for the policy. | Each where it's strongest |
-| Video subtitles | **One custom subtitle engine** (DOM overlay) shared by in-game dialogue AND video playback — no WebVTT | Single format, single styling, language switch works everywhere |
-| i18n mechanism | **Custom lightweight module** (typed keys, JSON per locale). Alternative considered: i18next — rejected for now (YAGNI; 4 locales but no plural/ICU needs yet). Revisit only if requirements grow (pluralization, interpolation-heavy text). | Simplicity |
+| Decision | Choice |
+|---|---|
+| Engine | **Phaser 3.90.0**, pinned — user chose to stay on 3.x over the now-stable Phaser 4 |
+| Canvas | **320×180 logical**, `Scale.FIT`, `pixelArt: true`, integer art scale |
+| Language / bundler | TypeScript + Vite |
+| Progress persistence | localStorage completion flags only (trigger/stage IDs, versioned key) — §3.4 |
+| Maps | Tiled JSON, one per stage, all played by the single `WorldScene` — §3.9 |
+| Input | Unified `InputService` (direction + A/B); keyboard + virtual pad — §3.10 |
+| Localization | Full UI + subtitles: `en`, `zh-TW`, `ja`, `ko` — §3.7 |
+| Pixel font | **Fusion Pixel 12px proportional** (OFL-1.1), per-locale glyph flavors (latin / zh_hant / ja / ko woff2 in `public/assets/fonts/`), lazy-loaded and swapped on locale change; render at integer multiples of the 12px grid |
+| Text rendering | DOM overlay for screen-space text, Phaser text for world-space — §3.8 |
+| Video subtitles | One custom subtitle engine (DOM overlay) shared by dialogue AND video — no WebVTT — §3.5 |
+| i18n | Custom lightweight module (typed keys, JSON per locale); i18next rejected (YAGNI) — revisit only if plural/ICU needs appear |
 
 ## 3. Architecture Overview
 
@@ -73,9 +68,9 @@ Rules:
 - All cross-scene communication uses the typed event bus (thin wrapper around
   `Phaser.Events.EventEmitter`); no scene reaches into another scene's fields.
 - Everything about game progression is **data-driven** via the stage registry
-  (`config/stages.ts` + `stages/<id>/config.ts`) — adding a stage or cutscene must
-  require config + assets only (plus a scene subclass only for a brand-new mini-game);
-  no FlowDirector changes.
+  (`config/stages.ts` + `stages/<id>/config.ts`) — adding a stage or cutscene
+  requires config + assets only (plus a scene subclass only for a brand-new
+  mini-game); no FlowDirector changes.
 
 ### 3.1 Directory Structure
 
@@ -83,53 +78,48 @@ Rules:
 src/
   main.ts                    # Phaser.Game bootstrap (registers all scenes)
   config/
-    gameConfig.ts            # Phaser.Types.Core.GameConfig (pixelArt: true, scale config)
-    stages.ts                # stage REGISTRY: imports stages/<id>/config.ts, defines
-                             # default order + unlock graph (see §3.2)
+    gameConfig.ts            # Phaser GameConfig (pixelArt: true, Scale.FIT)
+    dimensions.ts            # 320×180 logical-size constants
+    stages.ts                # stage REGISTRY + StageDef/TriggerDef/ActivityRef types (§3.2)
   core/
     FlowDirector.ts          # launches stages, pause-world/run-activity/resume, advances flow
     EventBus.ts              # typed event emitter + event name constants/types
   scenes/
+    keys.ts                  # SceneKeys constants — never use raw scene-key strings
     BootScene.ts             # minimal, loads preload assets
     PreloadScene.ts          # loads global assets, shows progress bar
     MainMenuScene.ts         # start / language / stage-select entry
     StageSelectScene.ts      # lists UNLOCKED stages, enter/replay any of them
-    WorldScene.ts            # THE reusable map scene: builds itself from a StageDef
-                             # (tilemap, spawn, triggers); one instance serves all stages
-    VideoScene.ts            # generic cutscene player (any video + subtitle track)
+    WorldScene.ts            # THE reusable map scene (§3.9); one instance serves all stages
+    VideoScene.ts            # THE generic cutscene player (§3.6)
     minigames/               # SHARED pool — any stage's trigger can reference any mini-game
       MiniGameScene.ts       # abstract base class — THE mini-game contract (§3.3)
       _template/
         TemplateMiniGame.ts  # copy-me example implementing the contract
-      <name>/                # one folder per real mini-game; stage-private helpers
-        <Name>MiniGame.ts    #   (entities, constants) live beside the scene file
+      <name>/                # one folder per real mini-game; private helpers live beside it
   stages/
     <stage-id>/              # one folder per stage — CONTENT only, no core logic
-      config.ts              # StageDef: tilemap key/url, spawn, triggers (§3.2)
-      script.ts              # OPTIONAL per-stage hooks (onEnter, custom trigger handlers)
-                             # called by WorldScene if present; omit when data suffices
+      config.ts              # StageDef (§3.2); current stages: demo, demo-2, demo-branch
   input/
-    InputService.ts          # THE input abstraction: direction vector + A/B buttons +
-                             # typed events; gameplay code reads ONLY this (§3.10)
-    KeyboardSource.ts        # arrows/WASD + Z/X (or Space/Enter) → InputService
-    VirtualPadSource.ts      # on-screen joystick + A/B buttons (DOM via ui/domOverlay),
-                             # created only on touch devices → InputService
+    InputService.ts          # THE input abstraction (§3.10); gameplay reads ONLY this
+    KeyboardSource.ts        # arrows/WASD + action keys → InputService
+    VirtualPadSource.ts      # on-screen joystick + A/B (DOM), created on touch devices
   services/
-    ProgressService.ts       # completion-flag persistence + unlock derivation (localStorage)
-    I18nService.ts           # locale loading, t(key), locale-change event
+    ProgressService.ts       # completion-flag persistence + unlock derivation (§3.4)
+    I18nService.ts           # locale loading, t(key), locale-change event (§3.7)
     storage.ts               # KeyValueStorage interface + safe localStorage accessor
   subtitles/
     SubtitleEngine.ts        # cue scheduling against a clock source (§3.5)
-    SubtitleOverlay.ts       # DOM renderer (a styled div above the canvas)
+    SubtitleOverlay.ts       # DOM renderer (.subtitle-bar div above the canvas)
+    GameClock.ts             # clock adapter fed by scene UPDATE deltas (pause-aware)
+    VideoClock.ts            # clock adapter over video.getCurrentTime() * 1000
     types.ts                 # SubtitleCue, SubtitleTrack, ClockSource
   ui/
-    domOverlay.ts            # helpers to position DOM elements over the canvas
+    domOverlay.ts            # DOM-over-canvas container; --px scaling helpers (§3.8)
     fonts.ts                 # per-locale pixel-font loader (FontFace) + --ui-font swap
   locales/
-    en.json                  # UI strings (imported as module for typed keys)
-    zh-TW.json
-    ja.json
-    ko.json
+    en.json                  # source of truth for MessageKey (typed keys)
+    zh-TW.json  ja.json  ko.json
 public/assets/
   maps/                      # Tiled JSON, one per stage (+ shared tileset images)
   video/                     # .mp4/.webm cutscenes
@@ -141,9 +131,11 @@ tests/                       # vitest unit tests for services & subtitle timing
 
 Placement rules (so nothing lands in the wrong place):
 - New **stage** → `src/stages/<id>/` + a map in `public/assets/maps/` + register in
-  `config/stages.ts`. Never touches `core/` or `scenes/`.
-- New **mini-game** → `src/scenes/minigames/<name>/` + scene-key registration in
-  `main.ts`. Referenced from stage triggers; never owned by one stage folder.
+  `config/stages.ts` + add its `titleKey` to **all four** locale files
+  (`StageDef.titleKey` is a typed `MessageKey`). Never touches `core/` or `scenes/`.
+- New **mini-game** → `src/scenes/minigames/<name>/` + a key in `scenes/keys.ts` +
+  registration in `main.ts`. Referenced from stage triggers; never owned by one
+  stage folder.
 - New **video** → assets only (`public/assets/video/` + `subtitles/`) + a trigger entry.
 - Anything shared by 2+ mini-games graduates out of a mini-game folder into
   `core/`/`services/`/`ui/` as appropriate.
@@ -173,7 +165,7 @@ export interface TriggerDef {
 
 export interface StageDef {
   id: string;                    // unique, stable — used in completion flags
-  titleKey: string;              // i18n key shown in stage select
+  titleKey: MessageKey;          // i18n key shown in stage select (typed — §3.7)
   tilemapKey: string;
   tilemapUrl: string;            // public/assets/maps/...
   spawn: { objectName: string }; // player spawn point object in the Tiled map
@@ -201,8 +193,7 @@ binds names to activities, so level layout stays entirely in the map editor.
   `ProgressService.markCompleted(flagId)`, resume `WorldScene`. If the stage is now
   complete → mark the stage complete (unlocks branches / the `next` stage) and prompt
   advance to `next` (or return to StageSelect when there is no `next`).
-- After the final spine stage → an end/credits state (simple return to MainMenu is fine
-  for v1).
+- After the final spine stage → an end/credits state (simple return to MainMenu for v1).
 
 ### 3.3 Mini-game Contract
 
@@ -215,19 +206,19 @@ export abstract class MiniGameScene extends Phaser.Scene {
   /** Subclasses MUST call this exactly once when the player finishes. */
   protected completeActivity(result?: unknown): void; // emits 'activity:complete' on EventBus
 
-  /** Subclasses MAY call to show timed in-game dialogue (uses SubtitleEngine
-      with the game-clock source). */
+  /** Timed in-game dialogue (SubtitleEngine + GameClock, pauses with the scene).
+      Resolves when the track finishes. */
   protected showDialogue(trackId: string): Promise<void>;
 }
 ```
 
 Adding a mini-game = create a subclass in `scenes/minigames/<name>/`, register its scene
-key in `main.ts`, reference it from any stage's `TriggerDef`. No changes to
-FlowDirector/EventBus. Mini-games are otherwise unconstrained (own physics, tilemaps,
-input) — they only owe the framework a `completeActivity()` call, and they MUST read
-player input only through `InputService` (§3.10): direction + A/B, never raw keyboard
-or pointer position. Mini-games are a shared pool: multiple stages may trigger the
-same mini-game.
+key in `scenes/keys.ts` + `main.ts`, reference it from any stage's `TriggerDef`. No
+changes to FlowDirector/EventBus. Mini-games are otherwise unconstrained (own physics,
+tilemaps, input) — they only owe the framework a `completeActivity()` call, and they
+MUST read player input only through `InputService` (§3.10): direction + A/B, never raw
+keyboard or pointer position. Mini-games are a shared pool: multiple stages may trigger
+the same mini-game. `_template/TemplateMiniGame.ts` is the copy-me example.
 
 ### 3.4 Progress & Unlocking
 
@@ -239,9 +230,10 @@ same mini-game.
   `isStageComplete(stageId)`,
   `getUnlockedStages(): StageDef[]` — derived from `STAGES` + completed flags
   (spine stages unlock as the `next` chain is completed; branch stages when their
-  `unlockedBy` list is complete; drop unknown IDs so config changes can't crash the UI).
-- Wrap all `localStorage` access in try/catch (private-browsing modes throw) and fall
-  back to an in-memory set.
+  `unlockedBy` list is complete; unknown IDs are dropped so config changes can't
+  crash the UI).
+- All `localStorage` access is wrapped in try/catch (private-browsing modes throw)
+  with an in-memory fallback.
 - **No other state is ever persisted.** Map state (consumed triggers, open doors) is
   *derived* from flags when `WorldScene` builds the map; entering a stage always starts
   it fresh at its spawn point.
@@ -257,8 +249,8 @@ Data format — `public/assets/subtitles/<trackId>.<locale>.json`:
 ```json
 { "cues": [ { "start": 1200, "end": 3400, "text": "Hello!" } ] }
 ```
-(`start`/`end` in ms; one file per track per locale; loaded lazily by
-`SubtitleEngine.loadTrack(trackId, locale)`.)
+(`start`/`end` in ms — start-inclusive, end-exclusive; one file per track per locale,
+**all four locales required**; loaded lazily and cached per session.)
 
 Core abstraction — the **clock source**:
 
@@ -266,44 +258,48 @@ Core abstraction — the **clock source**:
 export interface ClockSource { nowMs(): number }   // monotonic within a playback
 ```
 
-- In-game dialogue → clock adapter over the scene's elapsed time (pause-aware).
-- Video → clock adapter over `video.getCurrentTime() * 1000` from the Phaser Video
+- In-game dialogue → `GameClock`, advanced by the hosting scene's UPDATE deltas
+  (pause-aware: dialogue pauses with the scene).
+- Video → `VideoClock` over `video.getCurrentTime() * 1000` from the Phaser Video
   game object, so **seeking/pausing video keeps subtitles in sync automatically**.
 
-`SubtitleEngine.play(track, clock)` polls the clock each Phaser update tick (an
-`update()` hookup, not `setInterval`) and tells `SubtitleOverlay` which cue is active.
-`SubtitleOverlay` is a single DOM `<div>` positioned over the canvas (via `ui/domOverlay.ts`):
+`SubtitleEngine.play(trackId, clock)` polls the clock on a host-driven `update()` tick
+(not `setInterval`) and tells `SubtitleOverlay` which cue is active. `SubtitleOverlay`
+is a single DOM div (`.subtitle-bar`) positioned over the canvas (via `ui/domOverlay.ts`):
 DOM gives crisp readable text at any canvas zoom, trivial CJK font support, and one CSS
-stylesheet for both dialogue and video subtitles. On locale change (event from
-`I18nService`), the engine reloads the current track in the new locale and re-syncs.
+stylesheet for both dialogue and video subtitles. On `locale:changed`, the engine
+reloads the playing track in the new locale and re-syncs.
 
 ### 3.6 Video / Cutscenes
 
 `VideoScene` (one generic scene, parameterized by the `ActivityRef`; launched by
-FlowDirector over the paused `WorldScene` like any other activity):
-- `this.load.video(videoKey, videoUrl)` in its `preload`, `this.add.video(...)` centered
-  and scaled to fit in `create`, then `video.play()`.
+FlowDirector for every `type: 'video'` activity, over the paused `WorldScene`):
+- Lazy-loads the video in `preload` (`this.load.video(videoKey, videoUrl)`), fits it
+  to the 320×180 canvas on the metadata event, then plays.
 - Autoplay policy: playback always starts after a user gesture (menu click / trigger
-  interaction), so sound is allowed; still verify on first implementation and fall back
-  to muted + "tap to enable sound" if a browser blocks it.
-- If `subtitleTrackId` is set: `SubtitleEngine.play(track, videoClock)`.
-- If `skippable`: any key/pointer shows a localized "Skip" button; skipping stops video +
-  subtitles and emits `activity:complete`.
-- On video `complete` event → `activity:complete`.
+  interaction), so sound is allowed. **Still pending: a real-browser check of
+  autoplay-with-sound after the trigger gesture** — fall back to muted +
+  "tap to enable sound" if a browser blocks it.
+- If `subtitleTrackId` is set: subtitles play against the `VideoClock`.
+- If `skippable`: any key/pointer reveals a localized DOM Skip button (`video.skip`
+  key, `.video-skip`); activating it stops video + subtitles and emits
+  `activity:complete`.
+- On video `complete` event → `activity:complete`. The virtual pad hides while a
+  video is active.
 
 ### 3.7 i18n
 
 `I18nService`:
-- `en.json` / `zh-TW.json` / `ja.json` / `ko.json` imported statically; key type derived from `en.json`
-  (`type MessageKey = keyof typeof en`) so `t(key)` is compile-time checked and a missing
-  translation in another locale is a type/test error.
+- `en.json` / `zh-TW.json` / `ja.json` / `ko.json` imported statically; key type derived
+  from `en.json` (`type MessageKey = keyof typeof en`) so `t(key)` is compile-time
+  checked and a missing translation in another locale is a type/test error.
 - `t(key: MessageKey): string`, `setLocale(locale)` → persists choice to
   `kuraventure.locale` in localStorage and emits `locale:changed` on the EventBus.
 - Scenes re-render their texts on `locale:changed` (each scene owns its refresh).
-- Font: Fusion Pixel Font 12px (CONFIRMED — see §2). `ui/fonts.ts` loads the active
-  locale's flavor via the FontFace API (`display: swap`, cached per session), points
-  the `--ui-font` CSS variable at it on `locale:changed`, and sets `<html lang>` so
-  CSS line-breaking rules apply.
+- Font: Fusion Pixel 12px (see §2). `ui/fonts.ts` loads the active locale's flavor via
+  the FontFace API (`display: swap`, cached per session), points the `--ui-font` CSS
+  variable at it on `locale:changed`, and sets `<html lang>` so CSS line-breaking
+  rules apply.
 - CJK line breaking: DOM/CSS handles ja kinsoku and ko word-boundary wrapping natively
   (`overflow-wrap`, `line-break: strict` for ja) — another reason screen-space text is
   DOM, since Phaser's word-wrap is space-based and poor for CJK.
@@ -324,13 +320,14 @@ short Latin/digit strings; if world-space text must be localized CJK, use `Phase
 with the same web font at an integer multiple of its pixel grid — but prefer designing
 world text to be language-neutral (icons/numbers) so this stays rare.
 
-Rule of thumb for OPUS: *if the camera moves and the text shouldn't → DOM; if the text
-belongs to a game object → Phaser.* Keep every DOM element inside the `ui/domOverlay.ts`
+Rule of thumb: *if the camera moves and the text shouldn't → DOM; if the text belongs
+to a game object → Phaser.* Keep every DOM element inside the `ui/domOverlay.ts`
 container so scaling/positioning stays in one place.
 
 **Keeping DOM text pixel-styled:** use a true pixel font at exact integer multiples of
-its native grid (e.g. 12px, 24px, 36px for a 12px-grid font — never 30px), disable
-smoothing (`-webkit-font-smoothing: none; font-smooth: never;` where supported), avoid
+its native grid — sizes go through the `--px` CSS variable in multiples of the 12px
+font grid (12px, 24px, 36px — never 30px). Disable smoothing
+(`-webkit-font-smoothing: none; font-smooth: never;` where supported), avoid
 fractional positions/transforms (round to device pixels), and skip anti-aliased effects
 like blur/soft shadows (hard 1px offset shadows only). Done this way, DOM text is
 visually indistinguishable from bitmap-font text.
@@ -346,12 +343,12 @@ One reusable `Phaser.Scene` serving every stage; never subclassed per stage.
   zone/NPC. Skip triggers whose flag is already set when `once: true` (derived map
   state — §3.4). Entering/interacting emits `activity:start` on the EventBus; the
   FlowDirector handles pause/launch (WorldScene never launches activity scenes itself).
-- If `src/stages/<id>/script.ts` exists, call its exported hooks
-  (`onEnter(scene)`, optional per-trigger overrides). Hooks are the escape hatch for
-  stage-specific behavior that data can't express — prefer data; keep scripts rare
-  and small.
 - On resume after an activity, refresh trigger/map state from `ProgressService`
   (a just-completed `once` trigger disappears without reloading the map).
+- Escape hatch (designed, **not yet implemented** — add only when a stage first needs
+  it): optional per-stage `src/stages/<id>/script.ts` hooks (`onEnter(scene)`,
+  per-trigger overrides) for behavior data can't express. Prefer data; keep scripts
+  rare and small.
 
 ### 3.10 Input (desktop + mobile, one abstraction)
 
@@ -377,50 +374,21 @@ export interface GameInput {
   avoid pixel-precise or twitch-heavy challenges (virtual sticks are imprecise); keep
   critical visuals out of the bottom screen corners (thumbs sit there).
 
-## 4. Implementation Milestones (for OPUS)
+## 4. Milestones
 
-Do these in order; each is a coherent, reviewable unit. **Do not run build/test/lint
-scripts — the user runs them manually** (per user's global rules). Write tests; don't run them.
+**1–7 (framework): DONE** — scaffold, world core + input, activity flow, progress &
+unlocking, i18n, subtitle engine, video activity. See git history (`feat: milestone N`)
+for the details of each.
 
-Milestones 1–7 build the **framework**; the directory layout of §3.1 is final from
-milestone 1, so stage/mini-game content added later (milestone 8+) never moves files.
+Remaining:
 
-1. **Scaffold** — Phaser 3.90 + TS + Vite (start from the official `template-vite-ts`),
-   `gameConfig.ts` with `pixelArt: true`, Boot/Preload/MainMenu placeholder scenes, and a
-   project `CLAUDE.md` pointing here. *Accept:* game boots to menu.
-2. **World core + input** — `EventBus`, `FlowDirector.startStage`, `InputService` with
-   `KeyboardSource` and `VirtualPadSource` (§3.10), `WorldScene` with one placeholder
-   Tiled map (`src/stages/demo/`), player movement + collision, spawn from named
-   object. *Accept:* menu starts the demo stage; player walks with keys on desktop AND
-   with the on-screen joystick on a phone/touch emulation. *Tests:* stage registry
-   lookup, InputService source merging.
-3. **Activity flow** — `TriggerDef` handling in `WorldScene`, pause/launch/resume in
-   `FlowDirector`, `MiniGameScene` base + `TemplateMiniGame` (a "press A to finish"
-   placeholder), one trigger in the demo map. *Accept:* walking into the trigger runs
-   the mini-game; finishing it returns to the map at the same spot; a `once` trigger
-   disappears. *Tests:* FlowDirector activity dispatch + completion handling.
-4. **Progress & unlocking** — `ProgressService` + `StageSelectScene` + menu entry; a
-   second demo stage on the spine plus one branch stage to prove `next`/`unlockedBy`.
-   *Accept:* refresh browser, completion flags survive; stage select shows exactly the
-   unlocked stages; replay works. *Tests:* persistence, unlock derivation (spine +
-   branch), unknown-ID filtering, storage-failure fallback.
-5. **i18n** — `I18nService`, 4 locale files, language switcher in menu, all existing UI
-   strings converted; load the confirmed pixel web font (ask user per §3.7 if not yet
-   confirmed). *Accept:* live switching among en / zh-TW / ja / ko updates every visible
-   string and renders correctly in the pixel font. *Tests:* locale completeness (every
-   `MessageKey` exists in every locale), persistence.
-6. **Subtitle engine** — types, engine, DOM overlay, game-clock adapter; wire
-   `showDialogue()` into the template mini-game. *Accept:* timed dialogue displays and
-   switches language live. *Tests:* cue selection at boundary times, pause behavior,
-   locale reload.
-7. **Video activity** — `VideoScene` + video-clock adapter + skip, launched from a
-   trigger in the demo map. Use any placeholder .mp4/.webm. *Accept:* video plays with
-   synced subtitles in all four languages; skip works; completion resumes the map and
-   records the flag.
 8. **Real stages & mini-games** — **TBD: ask the user for the stage list (spine +
    branches), maps, and mini-game designs.** Each stage/mini-game is a separate
    milestone using §3.2/§3.3; content only, no core changes.
 9. **Polish** — responsive `Scale.FIT` tuning, transitions, audio, credits. TBD scope.
+
+**Do not run build/test/lint scripts — the user runs them manually.** Write tests;
+don't run them.
 
 ## 5. Open Questions (ask the user — do not assume)
 
@@ -428,10 +396,7 @@ milestone 1, so stage/mini-game content added later (milestone 8+) never moves f
   map contents/triggers.
 - Which mini-games (gameplay, count) and which stages trigger them.
 - Art direction: asset sources (including tilesets for the Tiled maps).
-  (Canvas resolution is DECIDED: 320×180 — see §2.)
-  (Pixel font is DECIDED: Fusion Pixel Font 12px proportional with per-locale
-  flavors — see §2.)
 - Audio: music/SFX requirements; whether videos carry their own audio.
 - Mobile orientation: lock to landscape (assumed — matches joystick-left/buttons-right
   layout) or also support portrait?
-  (Target devices are DECIDED: desktop + mobile with the unified gamepad input of §3.10.)
+- Autoplay-with-sound after a trigger gesture still needs a real-browser check (§3.6).
