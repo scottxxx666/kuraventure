@@ -27,6 +27,10 @@ export class TemplateMiniGame extends MiniGameScene {
         prompt.textContent = i18nService.t('minigame.template.prompt');
         panel.append(title, prompt);
 
+        // Timed dialogue via the subtitle engine (PLAN.md §3.5); switching the
+        // locale mid-playback reloads the track live.
+        this.showDialogue('template-intro').catch((err) => console.warn(err));
+
         const unsubscribe = inputService.onPress('A', () => this.completeActivity());
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
             unsubscribe();

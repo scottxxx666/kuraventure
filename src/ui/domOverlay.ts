@@ -5,7 +5,7 @@
  * via CSS `pointer-events: auto`.
  */
 
-import { GAME_HEIGHT, GAME_WIDTH } from '../config/gameConfig';
+import { GAME_HEIGHT, GAME_WIDTH } from '../config/dimensions';
 
 let overlayRoot: HTMLDivElement | null = null;
 

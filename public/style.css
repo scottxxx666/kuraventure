@@ -129,6 +129,24 @@ html:lang(ja) #ui-overlay {
     color: #aaa;
 }
 
+/* Subtitle bar (src/subtitles/SubtitleOverlay.ts): dialogue + video cues.
+   Bottom-center, narrow enough to clear the virtual pad's thumb corners
+   (PLAN.md §3.10); centered without transforms like .hud-prompt. */
+.subtitle-bar {
+    position: absolute;
+    bottom: calc(var(--px) * 16px);
+    left: 0;
+    right: 0;
+    width: fit-content;
+    max-width: 60%;
+    margin: 0 auto;
+    font-size: calc(var(--px) * 12px);
+    text-align: center;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.6);
+    padding: calc(var(--px) * 2px) calc(var(--px) * 4px);
+}
+
 /* Virtual gamepad (src/input/VirtualPadSource.ts), touch devices only. */
 .vpad-stick {
     position: absolute;
