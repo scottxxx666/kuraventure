@@ -1,0 +1,11 @@
+{
+    "menu.title": "KURAVENTURE",
+    "menu.start": "Tap or press any key",
+    "stageSelect.title": "Select Stage",
+    "world.stageComplete": "Stage complete! Press A to continue",
+    "minigame.template.title": "Template Mini-game",
+    "minigame.template.prompt": "Press A (Z / Space) to finish",
+    "stage.demo.title": "Demo Stage",
+    "stage.demo-2.title": "Demo Stage 2",
+    "stage.demo-branch.title": "Branch Stage"
+}

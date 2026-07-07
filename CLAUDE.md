@@ -6,15 +6,16 @@ Pixel RPG web game built with Phaser 3.90 + TypeScript + Vite.
 product decisions, implementation milestones, and open questions. Where PLAN.md marks
 something **TBD**, ask the user; do not guess.
 
-Status: milestone 4 (progress & unlocking) done — `ProgressService` persists
-completion flags to localStorage (`kuraventure.progress.v1`, in-memory fallback on
-storage failure) and derives unlocked stages from the registry (`next` chain +
-`unlockedBy`); the menu opens `StageSelectScene` (unlocked stages, completed marked,
-replayable); finishing a stage's required triggers shows an advance prompt in
-`WorldScene` (A → `next` stage, or stage select at the end of the spine). Demo
-content: `demo` → `demo-2` spine plus `demo-branch` (`unlockedBy: ['demo']`).
-Next: PLAN.md milestone 5 (i18n) — **confirm the pixel font with the user first**
-(PLAN.md §3.7 / §5).
+Status: milestone 5 (i18n) done — `I18nService` (typed keys derived from
+`src/locales/en.json`; en / zh-TW / ja / ko; choice persists to `kuraventure.locale`)
+emits `locale:changed` on the EventBus; all screen-space text (menu, stage select,
+stage-complete prompt, template mini-game) is DOM on the overlay per PLAN.md §3.8,
+sized in integer multiples of the font grid via the `--px` CSS variable; the main
+menu hosts the language switcher. Font CONFIRMED (PLAN.md §2): Fusion Pixel Font
+12px proportional, per-locale glyph flavors in `public/assets/fonts/`, lazy-loaded
+and swapped by `src/ui/fonts.ts`. `StageDef.titleKey` is typed as `MessageKey`, so
+new stages must add their title to all four locale files.
+Next: PLAN.md milestone 6 (subtitle engine).
 
 ## Dev notes
 

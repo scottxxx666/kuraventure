@@ -1,3 +1,4 @@
+import type { MessageKey } from '../services/I18nService';
 import { demoStage } from '../stages/demo/config';
 import { demo2Stage } from '../stages/demo-2/config';
 import { demoBranchStage } from '../stages/demo-branch/config';
@@ -32,8 +33,8 @@ export interface TriggerDef {
 export interface StageDef {
     /** Unique, stable — used in completion flags. */
     id: string;
-    /** i18n key shown in stage select. */
-    titleKey: string;
+    /** i18n key shown in stage select; typed so an unknown key is a compile error. */
+    titleKey: MessageKey;
     tilemapKey: string;
     tilemapUrl: string;
     /** Player spawn point object in the Tiled map. */

@@ -1,0 +1,11 @@
+{
+    "menu.title": "KURAVENTURE",
+    "menu.start": "タップまたはキーでスタート",
+    "stageSelect.title": "ステージ選択",
+    "world.stageComplete": "ステージクリア！Aで次へ",
+    "minigame.template.title": "テンプレートミニゲーム",
+    "minigame.template.prompt": "A（Z / スペース）で終了",
+    "stage.demo.title": "デモステージ",
+    "stage.demo-2.title": "デモステージ 2",
+    "stage.demo-branch.title": "分岐ステージ"
+}

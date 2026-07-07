@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH } from '../config/gameConfig';
 import type { StageDef, TriggerDef } from '../config/stages';
 import { eventBus } from '../core/EventBus';
 import { inputService } from '../input/InputService';
 import { setVirtualPadVisible } from '../input/VirtualPadSource';
+import { i18nService } from '../services/I18nService';
 import { progressService } from '../services/ProgressService';
+import { createOverlayElement } from '../ui/domOverlay';
 import { SceneKeys } from './keys';
 
 const PLAYER_SPEED = 80; // px/s
@@ -33,6 +34,7 @@ export class WorldScene extends Phaser.Scene {
     private player!: Phaser.Physics.Arcade.Sprite;
     private triggerZones: TriggerZone[] = [];
     private advanceUnsubscribe: (() => void) | null = null;
+    private promptEl: HTMLDivElement | null = null;
 
     constructor() {
         super(SceneKeys.World);
@@ -82,8 +84,20 @@ export class WorldScene extends Phaser.Scene {
 
         this.createTriggers(map);
         // Derived map state (PLAN.md §3.9): after an activity, consumed once-triggers disappear.
-        const onResume = (): void => this.refreshTriggers();
+        // The DOM prompt hides while paused — it would float above the running activity.
+        const onResume = (): void => {
+            this.refreshTriggers();
+            if (this.promptEl) {
+                this.promptEl.hidden = false;
+            }
+        };
+        const onPause = (): void => {
+            if (this.promptEl) {
+                this.promptEl.hidden = true;
+            }
+        };
         this.events.on(Phaser.Scenes.Events.RESUME, onResume);
+        this.events.on(Phaser.Scenes.Events.PAUSE, onPause);
 
         const offStageComplete = eventBus.on('stage:complete', ({ stageId }) => {
             if (stageId === this.stage.id) {
@@ -99,9 +113,12 @@ export class WorldScene extends Phaser.Scene {
         // scene.events listeners survive scene restarts — remove them explicitly.
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
             this.events.off(Phaser.Scenes.Events.RESUME, onResume);
+            this.events.off(Phaser.Scenes.Events.PAUSE, onPause);
             offStageComplete();
             this.advanceUnsubscribe?.();
             this.advanceUnsubscribe = null;
+            this.promptEl?.remove();
+            this.promptEl = null;
             setVirtualPadVisible(false);
         });
     }
@@ -150,20 +167,13 @@ export class WorldScene extends Phaser.Scene {
         }
     }
 
-    /** Placeholder Phaser text until milestone 5 moves screen-space text to the DOM overlay. */
+    /** Screen-space text → DOM overlay (PLAN.md §3.8). */
     private showStageCompletePrompt(): void {
         if (this.advanceUnsubscribe) {
             return;
         }
-        this.add
-            .text(GAME_WIDTH / 2, 12, 'Stage complete! Press A to continue', {
-                fontFamily: 'monospace',
-                fontSize: '10px',
-                color: '#ffe27a',
-                backgroundColor: '#00000080'
-            })
-            .setOrigin(0.5)
-            .setScrollFactor(0);
+        this.promptEl = createOverlayElement('hud-prompt');
+        this.promptEl.textContent = i18nService.t('world.stageComplete');
         this.advanceUnsubscribe = inputService.onPress('A', () => {
             // Not while paused: the same physical button also drives the running activity.
             if (this.scene.isActive()) {

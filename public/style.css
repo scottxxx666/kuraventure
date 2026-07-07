@@ -16,13 +16,117 @@ body {
 }
 
 /* DOM overlay above the canvas (src/ui/domOverlay.ts); interactive children
-   opt back into pointer events. */
+   opt back into pointer events.
+   --px: CSS pixels per logical canvas pixel (set by initOverlayScale).
+   --ui-font: the active locale's pixel-font flavor (set by ui/fonts.ts).
+   Pixel-crisp text (PLAN.md §3.8): sizes are integer multiples of the font's
+   12px grid via calc(var(--px) * Npx), smoothing disabled, no soft shadows. */
 #ui-overlay {
     position: fixed;
     inset: 0;
     overflow: hidden;
     pointer-events: none;
     z-index: 10;
+    --px: 4;
+    --ui-font: monospace;
+    font-family: var(--ui-font);
+    color: #fff;
+    -webkit-font-smoothing: none;
+    font-smooth: never;
+}
+
+/* Japanese kinsoku line breaking (PLAN.md §3.7); lang is set by ui/fonts.ts. */
+html:lang(ja) #ui-overlay {
+    line-break: strict;
+}
+
+/* Full-screen centered panel (main menu, stage select, mini-game text). */
+.menu,
+.minigame-panel {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: calc(var(--px) * 12px);
+    text-align: center;
+}
+
+.menu-title {
+    font-size: calc(var(--px) * 24px);
+}
+
+.menu-prompt {
+    font-size: calc(var(--px) * 12px);
+    color: #aaa;
+    animation: menu-blink 1.4s step-end infinite;
+}
+
+@keyframes menu-blink {
+    50% {
+        opacity: 0.3;
+    }
+}
+
+.menu-langs,
+.menu-stages {
+    display: flex;
+    gap: calc(var(--px) * 6px);
+}
+
+.menu-stages {
+    flex-direction: column;
+    gap: calc(var(--px) * 4px);
+}
+
+.menu-button {
+    font: inherit;
+    font-size: calc(var(--px) * 12px);
+    color: inherit;
+    background: none;
+    border: calc(var(--px) * 1px) solid #666;
+    padding: calc(var(--px) * 2px) calc(var(--px) * 5px);
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.menu-button:hover {
+    border-color: #fff;
+}
+
+.menu-button[data-active='true'] {
+    border-color: #fff;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* Completed stage entries in stage select. */
+.menu-button-done {
+    color: #8fd18f;
+}
+
+/* Top-center HUD prompt (stage complete). Centered without transforms —
+   fractional translate positions would blur the pixel font. */
+.hud-prompt {
+    position: absolute;
+    top: calc(var(--px) * 6px);
+    left: 0;
+    right: 0;
+    width: fit-content;
+    margin: 0 auto;
+    font-size: calc(var(--px) * 12px);
+    color: #ffe27a;
+    background: rgba(0, 0, 0, 0.5);
+    padding: calc(var(--px) * 2px) calc(var(--px) * 4px);
+}
+
+.minigame-title {
+    font-size: calc(var(--px) * 12px);
+}
+
+.minigame-prompt {
+    font-size: calc(var(--px) * 12px);
+    color: #aaa;
 }
 
 /* Virtual gamepad (src/input/VirtualPadSource.ts), touch devices only. */

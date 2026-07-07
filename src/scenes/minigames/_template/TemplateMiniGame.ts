@@ -1,13 +1,14 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH } from '../../../config/gameConfig';
 import { inputService } from '../../../input/InputService';
+import { i18nService } from '../../../services/I18nService';
+import { createOverlayElement } from '../../../ui/domOverlay';
 import { SceneKeys } from '../../keys';
 import { MiniGameScene } from '../MiniGameScene';
 
 /**
  * Copy-me example (PLAN.md §3.3): the minimal valid mini-game — press A to
  * finish. Real mini-games live in scenes/minigames/<name>/ and register their
- * scene key in keys.ts + main.ts.
+ * scene key in keys.ts + main.ts. Screen-space text is DOM (§3.8).
  */
 export class TemplateMiniGame extends MiniGameScene {
     constructor() {
@@ -17,22 +18,19 @@ export class TemplateMiniGame extends MiniGameScene {
     create(): void {
         this.cameras.main.setBackgroundColor('#1d2233');
 
-        this.add
-            .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 12, 'TEMPLATE MINI-GAME', {
-                fontFamily: 'monospace',
-                fontSize: '14px',
-                color: '#ffffff'
-            })
-            .setOrigin(0.5);
-        this.add
-            .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 12, 'Press A (Z / Space) to finish', {
-                fontFamily: 'monospace',
-                fontSize: '10px',
-                color: '#aaaaaa'
-            })
-            .setOrigin(0.5);
+        const panel = createOverlayElement('minigame-panel');
+        const title = document.createElement('div');
+        title.className = 'minigame-title';
+        title.textContent = i18nService.t('minigame.template.title');
+        const prompt = document.createElement('div');
+        prompt.className = 'minigame-prompt';
+        prompt.textContent = i18nService.t('minigame.template.prompt');
+        panel.append(title, prompt);
 
         const unsubscribe = inputService.onPress('A', () => this.completeActivity());
-        this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribe);
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+            unsubscribe();
+            panel.remove();
+        });
     }
 }

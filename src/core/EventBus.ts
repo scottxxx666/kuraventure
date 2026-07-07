@@ -1,4 +1,5 @@
 import type { TriggerDef } from '../config/stages';
+import type { Locale } from '../services/I18nService';
 
 /**
  * All cross-scene communication goes through this typed bus (PLAN.md §3).
@@ -14,6 +15,8 @@ export interface GameEvents {
     'stage:complete': { stageId: string };
     /** Player confirmed the prompt; FlowDirector starts `next` or returns to stage select. */
     'stage:advance': { stageId: string };
+    /** Locale switched (I18nService); UI re-renders its strings, ui/fonts swaps the font. */
+    'locale:changed': { locale: Locale };
 }
 
 export type GameEventName = keyof GameEvents;

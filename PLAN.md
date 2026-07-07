@@ -41,7 +41,7 @@
 | Maps | **Tiled** JSON tilemaps, one per stage, loaded by a single reusable `WorldScene` | Data-driven stages; Phaser has first-class Tiled support |
 | Target devices / input | **Desktop + mobile.** Unified `InputService` (direction + A/B); keyboard on desktop, on-screen joystick + buttons on touch. Gameplay never reads pointer position; menus stay tappable. | Write input once; console-style controls fit the pixel-RPG feel |
 | Localization scope | **Full UI + subtitles**, `en`, `zh-TW`, `ja`, `ko` | User confirmed |
-| Pixel font strategy | **One pixel web font covering Latin + zh-TW + ja + ko** (candidate: Fusion Pixel Font — OFL-licensed, designed on 8/10/12px grids, covers all four scripts; verify coverage/license at implementation time and confirm with user). Render at integer multiples of its grid size to stay crisp. | One font = identical look in all languages; avoids mixing per-script fonts |
+| Pixel font strategy | **Fusion Pixel Font, 12px proportional** (CONFIRMED 2026-07-07; OFL-1.1, release 2026.07.01) with **per-locale glyph flavors** — latin / zh_hant / ja / ko woff2 (~700 KB each) in `public/assets/fonts/`, lazy-loaded per locale and swapped on locale change. Render at integer multiples of the 12px grid to stay crisp. | One family = identical look everywhere; per-locale flavors give each language its native Han glyph conventions, at no extra runtime download since only the active locale's file is fetched |
 | Text rendering | **DOM overlay** for screen-space text (subtitles, menus, HUD labels); **Phaser BitmapText/Text** for world-space text. See §3.8 for the policy. | Each where it's strongest |
 | Video subtitles | **One custom subtitle engine** (DOM overlay) shared by in-game dialogue AND video playback — no WebVTT | Single format, single styling, language switch works everywhere |
 | i18n mechanism | **Custom lightweight module** (typed keys, JSON per locale). Alternative considered: i18next — rejected for now (YAGNI; 4 locales but no plural/ICU needs yet). Revisit only if requirements grow (pluralization, interpolation-heavy text). | Simplicity |
@@ -117,12 +117,14 @@ src/
   services/
     ProgressService.ts       # completion-flag persistence + unlock derivation (localStorage)
     I18nService.ts           # locale loading, t(key), locale-change event
+    storage.ts               # KeyValueStorage interface + safe localStorage accessor
   subtitles/
     SubtitleEngine.ts        # cue scheduling against a clock source (§3.5)
     SubtitleOverlay.ts       # DOM renderer (a styled div above the canvas)
     types.ts                 # SubtitleCue, SubtitleTrack, ClockSource
   ui/
     domOverlay.ts            # helpers to position DOM elements over the canvas
+    fonts.ts                 # per-locale pixel-font loader (FontFace) + --ui-font swap
   locales/
     en.json                  # UI strings (imported as module for typed keys)
     zh-TW.json
@@ -132,6 +134,7 @@ public/assets/
   maps/                      # Tiled JSON, one per stage (+ shared tileset images)
   video/                     # .mp4/.webm cutscenes
   subtitles/                 # <trackId>.<locale>.json cue files (lazy-loaded)
+  fonts/                     # Fusion Pixel woff2, one per locale flavor (+ OFL licenses)
   images/ audio/ ...         # stage-specific art under images/<stage-or-minigame-id>/
 tests/                       # vitest unit tests for services & subtitle timing
 ```
@@ -297,8 +300,10 @@ FlowDirector over the paused `WorldScene` like any other activity):
 - `t(key: MessageKey): string`, `setLocale(locale)` → persists choice to
   `kuraventure.locale` in localStorage and emits `locale:changed` on the EventBus.
 - Scenes re-render their texts on `locale:changed` (each scene owns its refresh).
-- Font: use the single multi-script pixel font from §2 (candidate: Fusion Pixel Font)
-  as a web font for all DOM text. Confirm the exact font with the user before milestone 4.
+- Font: Fusion Pixel Font 12px (CONFIRMED — see §2). `ui/fonts.ts` loads the active
+  locale's flavor via the FontFace API (`display: swap`, cached per session), points
+  the `--ui-font` CSS variable at it on `locale:changed`, and sets `<html lang>` so
+  CSS line-breaking rules apply.
 - CJK line breaking: DOM/CSS handles ja kinsoku and ko word-boundary wrapping natively
   (`overflow-wrap`, `line-break: strict` for ja) — another reason screen-space text is
   DOM, since Phaser's word-wrap is space-based and poor for CJK.
@@ -424,8 +429,8 @@ milestone 1, so stage/mini-game content added later (milestone 8+) never moves f
 - Which mini-games (gameplay, count) and which stages trigger them.
 - Art direction: asset sources (including tilesets for the Tiled maps).
   (Canvas resolution is DECIDED: 320×180 — see §2.)
-- Confirm the multi-script pixel font (proposed: Fusion Pixel Font covering
-  Latin/zh-TW/ja/ko) or the user supplies another.
+  (Pixel font is DECIDED: Fusion Pixel Font 12px proportional with per-locale
+  flavors — see §2.)
 - Audio: music/SFX requirements; whether videos carry their own audio.
 - Mobile orientation: lock to landscape (assumed — matches joystick-left/buttons-right
   layout) or also support portrait?

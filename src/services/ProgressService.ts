@@ -1,5 +1,7 @@
 import { STAGES } from '../config/stages';
 import type { StageDef } from '../config/stages';
+import { defaultStorage } from './storage';
+import type { KeyValueStorage } from './storage';
 
 /**
  * Completion-flag persistence + unlock derivation (PLAN.md §3.4).
@@ -10,24 +12,9 @@ import type { StageDef } from '../config/stages';
 
 const STORAGE_KEY = 'kuraventure.progress.v1';
 
-/** The minimal localStorage surface we use; tests inject a fake. */
-export interface KeyValueStorage {
-    getItem(key: string): string | null;
-    setItem(key: string, value: string): void;
-}
-
 interface StoredProgress {
     completedTriggers: string[];
     completedStages: string[];
-}
-
-/** localStorage access can throw (private-browsing modes) — treat as absent. */
-function defaultStorage(): KeyValueStorage | null {
-    try {
-        return globalThis.localStorage ?? null;
-    } catch {
-        return null;
-    }
 }
 
 export class ProgressService {

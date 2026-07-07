@@ -1,0 +1,11 @@
+{
+    "menu.title": "KURAVENTURE",
+    "menu.start": "點擊或按任意鍵",
+    "stageSelect.title": "選擇關卡",
+    "world.stageComplete": "關卡完成！按 A 繼續",
+    "minigame.template.title": "範本小遊戲",
+    "minigame.template.prompt": "按 A（Z / 空白鍵）結束",
+    "stage.demo.title": "示範關卡",
+    "stage.demo-2.title": "示範關卡 2",
+    "stage.demo-branch.title": "分支關卡"
+}

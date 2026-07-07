@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { StageDef } from '../src/config/stages';
 import { ProgressService } from '../src/services/ProgressService';
-import type { KeyValueStorage } from '../src/services/ProgressService';
+import type { KeyValueStorage } from '../src/services/storage';
 
 const STORAGE_KEY = 'kuraventure.progress.v1';
 
@@ -19,7 +19,8 @@ function makeStorage(initial: Record<string, string> = {}): KeyValueStorage & { 
 function stage(id: string, extra: Partial<StageDef> = {}): StageDef {
     return {
         id,
-        titleKey: `stage.${id}.title`,
+        // Fixture stages are fake, so their title keys are not real MessageKeys.
+        titleKey: `stage.${id}.title` as StageDef['titleKey'],
         tilemapKey: `map-${id}`,
         tilemapUrl: `assets/maps/${id}.json`,
         spawn: { objectName: 'spawn' },

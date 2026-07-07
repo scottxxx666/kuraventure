@@ -1,41 +1,56 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH } from '../config/gameConfig';
+import { eventBus } from '../core/EventBus';
 import { flowDirector } from '../core/FlowDirector';
+import { i18nService } from '../services/I18nService';
 import { progressService } from '../services/ProgressService';
+import { createOverlayElement } from '../ui/domOverlay';
 import { SceneKeys } from './keys';
 
 /**
  * Lists the unlocked stages (PLAN.md §3.4); completed ones are marked and can
- * be replayed. Entries are tap/click like all menus (PLAN.md §3.10).
- * Hardcoded strings and Phaser text are temporary: stage titles switch to
- * titleKey via i18n and the DOM overlay in milestone 5.
+ * be replayed. DOM on the overlay, tap/click like all menus (§3.8/§3.10);
+ * rebuilt on locale:changed.
  */
 export class StageSelectScene extends Phaser.Scene {
+    private panel: HTMLDivElement | null = null;
+
     constructor() {
         super(SceneKeys.StageSelect);
     }
 
     create(): void {
-        this.add
-            .text(GAME_WIDTH / 2, 24, 'SELECT STAGE', {
-                fontFamily: 'monospace',
-                fontSize: '16px',
-                color: '#ffffff'
-            })
-            .setOrigin(0.5);
+        this.panel = createOverlayElement('menu');
+        this.render();
 
-        progressService.getUnlockedStages().forEach((stage, i) => {
-            const done = progressService.isStageComplete(stage.id);
-            const label = `${done ? '*' : ' '} ${stage.id.toUpperCase()}`;
-            this.add
-                .text(GAME_WIDTH / 2, 56 + i * 18, label, {
-                    fontFamily: 'monospace',
-                    fontSize: '12px',
-                    color: done ? '#8fd18f' : '#ffffff'
-                })
-                .setOrigin(0.5)
-                .setInteractive({ useHandCursor: true })
-                .once('pointerdown', () => flowDirector.startStage(stage.id));
+        const offLocale = eventBus.on('locale:changed', () => this.render());
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+            offLocale();
+            this.panel?.remove();
+            this.panel = null;
         });
+    }
+
+    private render(): void {
+        if (!this.panel) {
+            return;
+        }
+        this.panel.replaceChildren();
+
+        const title = document.createElement('div');
+        title.className = 'menu-title';
+        title.textContent = i18nService.t('stageSelect.title');
+
+        const list = document.createElement('div');
+        list.className = 'menu-stages';
+        for (const stage of progressService.getUnlockedStages()) {
+            const done = progressService.isStageComplete(stage.id);
+            const button = document.createElement('button');
+            button.className = done ? 'menu-button menu-button-done' : 'menu-button';
+            button.textContent = `${done ? '* ' : ''}${i18nService.t(stage.titleKey)}`;
+            button.addEventListener('click', () => flowDirector.startStage(stage.id));
+            list.appendChild(button);
+        }
+
+        this.panel.append(title, list);
     }
 }
