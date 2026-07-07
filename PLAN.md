@@ -13,10 +13,14 @@
   in a stage (zones / NPC interactions) launch **activities**: mini-games or
   cutscene videos. Progression is mostly linear with branches. Adding stages,
   mini-games, or videos never touches core code.
-- **No save/load of gameplay state.** Only completion flags persist (localStorage).
-  Map state (door open, trigger consumed) and stage unlocking are *derived* from
-  the flags. A refresh loses mid-map position, never progress; any unlocked stage
-  can be entered or replayed from stage select.
+- **No save/load of gameplay state.** Only completion flags and the item
+  inventory persist (localStorage). Map state (door open, trigger consumed) and
+  stage unlocking are *derived* from the flags. A refresh loses mid-map position,
+  never progress; any unlocked stage can be entered or replayed from stage select.
+- **Items** are permanent booleans (never consumed, no quantities), granted by
+  triggers (map pickups, mini-game rewards, NPC/cutscene gifts) and required by
+  **gated in-map exits**: a stage's exit door opens only when the stage is
+  complete AND the exit's required items are held (§3.2, §3.4, §3.9).
 - **Full UI + subtitle i18n**: `en`, `zh-TW`, `ja`, `ko`. Every visible string goes
   through i18n; subtitles render over videos too.
 - **Desktop AND mobile browsers.** One virtual-gamepad input model everywhere:
@@ -32,7 +36,7 @@
 | Engine | **Phaser 3.90.0**, pinned — user chose to stay on 3.x over the now-stable Phaser 4 |
 | Canvas | **320×180 logical**, `Scale.FIT`, `pixelArt: true`, integer art scale |
 | Language / bundler | TypeScript + Vite |
-| Progress persistence | localStorage completion flags only (trigger/stage IDs, versioned key) — §3.4 |
+| Progress persistence | localStorage completion flags + item inventory (trigger/stage/item IDs, versioned key) — §3.4. User chose persisted inventory over deriving items from flags |
 | Maps | Tiled JSON, one per stage, all played by the single `WorldScene` — §3.9 |
 | Input | Unified `InputService` (direction + A/B); keyboard + virtual pad — §3.10 |
 | Localization | Full UI + subtitles: `en`, `zh-TW`, `ja`, `ko` — §3.7 |
@@ -80,7 +84,8 @@ src/
   config/
     gameConfig.ts            # Phaser GameConfig (pixelArt: true, Scale.FIT)
     dimensions.ts            # 320×180 logical-size constants
-    stages.ts                # stage REGISTRY + StageDef/TriggerDef/ActivityRef types (§3.2)
+    stages.ts                # stage REGISTRY + StageDef/TriggerDef/ExitDef/ActivityRef types (§3.2)
+    items.ts                 # item REGISTRY + ItemDef/ItemId types (§3.4)
   core/
     FlowDirector.ts          # launches stages, pause-world/run-activity/resume, advances flow
     EventBus.ts              # typed event emitter + event name constants/types
@@ -147,6 +152,8 @@ Types (in `src/config/stages.ts`; each stage's data lives in `src/stages/<id>/co
 ```ts
 export type ActivityRef =
   | { type: 'minigame'; sceneKey: string }        // scene key of a MiniGameScene subclass
+  | { type: 'pickup' }                             // sceneless map pickup: FlowDirector records
+                                                   // the flag immediately, world keeps running
   | {
       type: 'video';
       videoKey: string;                            // key for the lazy loader
@@ -159,8 +166,16 @@ export interface TriggerDef {
   id: string;                    // unique WITHIN the stage; flag is `${stageId}/${id}`
   at: { objectName: string };    // named object in the Tiled map (zone or NPC spawn)
   activity: ActivityRef;
+  grantsItems?: ItemId[];        // items granted when this trigger completes (never on abort)
   required: boolean;             // counts toward stage completion
   once: boolean;                 // if true, consumed (hidden) once completed
+}
+
+export interface ExitDef {       // in-map gated door (§3.9)
+  at: { objectName: string };    // named object in the Tiled map
+  to?: string;                   // destination stage; omitted = this stage's `next`
+                                 // (none → stage select); branch doors set `to`
+  requiredItems?: ItemId[];      // items the player must hold, on top of stage completion
 }
 
 export interface StageDef {
@@ -170,6 +185,8 @@ export interface StageDef {
   tilemapUrl: string;            // public/assets/maps/...
   spawn: { objectName: string }; // player spawn point object in the Tiled map
   triggers: TriggerDef[];
+  exits?: ExitDef[];             // gated doors; when present they REPLACE the
+                                 // press-A advance prompt (§3.9)
   next?: string;                 // default next stage (the "mostly linear" spine)
   unlockedBy?: string[];         // stage IDs that must be complete first; omitted on
                                  // the spine = unlocked when `next` chain reaches it;
@@ -188,11 +205,15 @@ binds names to activities, so level layout stays entirely in the map editor.
   starts `WorldScene` with the `StageDef` as scene data.
 - On `EventBus` event `activity:start` (from a WorldScene trigger) → pause `WorldScene`,
   launch the activity scene (`VideoScene` with the `ActivityRef` as scene data, or the
-  mini-game's `sceneKey`).
+  mini-game's `sceneKey`). Exception: `type: 'pickup'` is sceneless — the flag is
+  recorded and `grantsItems` granted immediately, the world never pauses.
 - On `activity:complete` → stop the activity scene, record the flag via
-  `ProgressService.markCompleted(flagId)`, resume `WorldScene`. If the stage is now
-  complete → mark the stage complete (unlocks branches / the `next` stage) and prompt
-  advance to `next` (or return to StageSelect when there is no `next`).
+  `ProgressService.markCompleted(flagId)`, grant the trigger's `grantsItems`, resume
+  `WorldScene`. If the stage is now complete → mark the stage complete (unlocks
+  branches / the `next` stage) and prompt advance to `next` (or return to StageSelect
+  when there is no `next`).
+- On `stage:advance` → start the payload's `to` stage (set by branch exit doors),
+  else the stage's `next`, else return to StageSelect.
 - On `activity:abort` (player quit the activity) → same as complete but the flag is
   **not** recorded: stop the activity scene, resume `WorldScene`; the trigger stays
   replayable.
@@ -231,14 +252,23 @@ the same mini-game. `_template/TemplateMiniGame.ts` is the copy-me example.
 
 `ProgressService` (pure TS class, no Phaser imports — unit-testable):
 - Storage key: `kuraventure.progress.v1` →
-  `{ completedTriggers: string[], completedStages: string[] }`
-  (trigger flags are `${stageId}/${triggerId}`; insertion order).
+  `{ completedTriggers: string[], completedStages: string[], items: string[] }`
+  (trigger flags are `${stageId}/${triggerId}`; insertion order; `items` was added
+  later — saves without it load as an empty inventory).
 - `markCompleted(flagId)`, `markStageCompleted(stageId)`, `isCompleted(flagId)`,
   `isStageComplete(stageId)`,
+  `grantItem(itemId)` / `hasItem(itemId)` — the persisted item inventory. Items are
+  permanent booleans, granted by FlowDirector from `TriggerDef.grantsItems` on
+  completion (never on abort; re-grants are no-ops), never consumed,
+  `areRequiredTriggersComplete(stage)` — the stage-completion rule (every
+  `required: true` trigger flag set), shared by FlowDirector and exit gating (§3.9),
   `getUnlockedStages(): StageDef[]` — derived from `STAGES` + completed flags
   (spine stages unlock as the `next` chain is completed; branch stages when their
   `unlockedBy` list is complete; unknown IDs are dropped so config changes can't
   crash the UI).
+- Items live in the registry `config/items.ts` (`ItemDef { id, nameKey }`; `ItemId`
+  is derived from the registry so config referencing an unknown item is a compile
+  error; `nameKey` is the localized display name used in exit/pickup messages).
 - All `localStorage` access is wrapped in try/catch (private-browsing modes throw)
   with an in-memory fallback.
 - **No other state is ever persisted.** Map state (consumed triggers, open doors) is
@@ -300,7 +330,8 @@ FlowDirector for every `type: 'video'` activity, over the paused `WorldScene`):
 - `en.json` / `zh-TW.json` / `ja.json` / `ko.json` imported statically; key type derived
   from `en.json` (`type MessageKey = keyof typeof en`) so `t(key)` is compile-time
   checked and a missing translation in another locale is a type/test error.
-- `t(key: MessageKey): string`, `setLocale(locale)` → persists choice to
+- `t(key: MessageKey, params?): string` (`{name}` placeholders replaced from
+  `params`), `setLocale(locale)` → persists choice to
   `kuraventure.locale` in localStorage and emits `locale:changed` on the EventBus.
 - Scenes re-render their texts on `locale:changed` (each scene owns its refresh).
 - Font: Fusion Pixel 12px (see §2). `ui/fonts.ts` loads the active locale's flavor via
@@ -350,6 +381,14 @@ One reusable `Phaser.Scene` serving every stage; never subclassed per stage.
   zone/NPC. Skip triggers whose flag is already set when `once: true` (derived map
   state — §3.4). Entering/interacting emits `activity:start` on the EventBus; the
   FlowDirector handles pause/launch (WorldScene never launches activity scenes itself).
+  Pickup triggers get immediate feedback instead (toast naming the items, consumed
+  zone removed on the spot — the world never paused).
+- For each `ExitDef`, create a door zone the same way. Walking in when every
+  required trigger is complete AND the exit's `requiredItems` are held emits
+  `stage:advance` (with the exit's `to`); otherwise a transient toast says what's
+  missing (stage tasks vs. named items). Stages **with** exits never show the
+  press-A "stage complete" prompt — the door is the way out; stages without exits
+  keep the prompt.
 - On resume after an activity, refresh trigger/map state from `ProgressService`
   (a just-completed `once` trigger disappears without reloading the map).
 - Escape hatch (designed, **not yet implemented** — add only when a stage first needs

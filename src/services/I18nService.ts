@@ -61,8 +61,13 @@ export class I18nService {
         return this.locale;
     }
 
-    t(key: MessageKey): string {
-        return MESSAGES[this.locale][key];
+    /** `{name}` placeholders are replaced from `params`; unknown ones are left as-is. */
+    t(key: MessageKey, params?: Record<string, string>): string {
+        const message = MESSAGES[this.locale][key];
+        if (!params) {
+            return message;
+        }
+        return message.replace(/\{(\w+)\}/g, (match, name: string) => params[name] ?? match);
     }
 
     setLocale(locale: Locale): void {

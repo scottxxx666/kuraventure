@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import type { StageDef, TriggerDef } from '../config/stages';
+import { getItemById } from '../config/items';
+import type { ExitDef, StageDef, TriggerDef } from '../config/stages';
 import { eventBus } from '../core/EventBus';
 import { inputService } from '../input/InputService';
 import { setVirtualPadVisible } from '../input/VirtualPadSource';
@@ -10,6 +11,7 @@ import { SceneKeys } from './keys';
 
 const PLAYER_SPEED = 80; // px/s
 const TILE_SIZE = 16; // fallback size for point-object triggers
+const TOAST_MS = 2400; // pickup/blocked-exit feedback duration
 
 interface TriggerZone {
     def: TriggerDef;
@@ -17,6 +19,14 @@ interface TriggerZone {
     zone: Phaser.GameObjects.Zone;
     marker: Phaser.GameObjects.Rectangle;
     /** Re-armed only after the player leaves the zone, so resuming inside it doesn't re-fire. */
+    armed: boolean;
+}
+
+interface ExitZone {
+    def: ExitDef;
+    zone: Phaser.GameObjects.Zone;
+    marker: Phaser.GameObjects.Rectangle;
+    /** Re-armed only after the player leaves the zone, so a blocked exit doesn't spam toasts. */
     armed: boolean;
 }
 
@@ -33,8 +43,11 @@ export class WorldScene extends Phaser.Scene {
     private stage!: StageDef;
     private player!: Phaser.Physics.Arcade.Sprite;
     private triggerZones: TriggerZone[] = [];
+    private exitZones: ExitZone[] = [];
     private advanceUnsubscribe: (() => void) | null = null;
     private promptEl: HTMLDivElement | null = null;
+    private toastEl: HTMLDivElement | null = null;
+    private toastTimer: Phaser.Time.TimerEvent | null = null;
 
     constructor() {
         super(SceneKeys.World);
@@ -83,8 +96,9 @@ export class WorldScene extends Phaser.Scene {
         this.cameras.main.startFollow(this.player);
 
         this.createTriggers(map);
+        this.createExits(map);
         // Derived map state (PLAN.md §3.9): after an activity, consumed once-triggers disappear.
-        // The DOM prompt hides while paused — it would float above the running activity.
+        // The DOM prompt/toast hide while paused — they would float above the running activity.
         const onResume = (): void => {
             this.refreshTriggers();
             if (this.promptEl) {
@@ -95,17 +109,20 @@ export class WorldScene extends Phaser.Scene {
             if (this.promptEl) {
                 this.promptEl.hidden = true;
             }
+            this.hideToast();
         };
         this.events.on(Phaser.Scenes.Events.RESUME, onResume);
         this.events.on(Phaser.Scenes.Events.PAUSE, onPause);
 
+        // Stages with exits advance through their gated door instead of the prompt (§3.9).
+        const hasExits = this.exitZones.length > 0;
         const offStageComplete = eventBus.on('stage:complete', ({ stageId }) => {
-            if (stageId === this.stage.id) {
+            if (stageId === this.stage.id && !hasExits) {
                 this.showStageCompletePrompt();
             }
         });
         // Replaying an already-complete stage: offer the way out immediately.
-        if (progressService.isStageComplete(this.stage.id)) {
+        if (progressService.isStageComplete(this.stage.id) && !hasExits) {
             this.showStageCompletePrompt();
         }
 
@@ -119,6 +136,7 @@ export class WorldScene extends Phaser.Scene {
             this.advanceUnsubscribe = null;
             this.promptEl?.remove();
             this.promptEl = null;
+            this.hideToast();
             setVirtualPadVisible(false);
         });
     }
@@ -131,12 +149,29 @@ export class WorldScene extends Phaser.Scene {
             if (this.physics.overlap(this.player, t.zone)) {
                 if (t.armed) {
                     t.armed = false;
-                    // FlowDirector pauses this scene and launches the activity (synchronously).
+                    const isPickup = t.def.activity.type === 'pickup';
+                    // FlowDirector pauses this scene and launches the activity (synchronously) —
+                    // except pickups, which it records immediately without pausing (§3.2).
                     eventBus.emit('activity:start', { stageId: this.stage.id, trigger: t.def });
+                    if (isPickup) {
+                        this.onPickupCollected(t.def);
+                    }
                     return;
                 }
             } else {
                 t.armed = true;
+            }
+        }
+
+        for (const e of this.exitZones) {
+            if (this.physics.overlap(this.player, e.zone)) {
+                if (e.armed) {
+                    e.armed = false;
+                    this.tryExit(e.def);
+                    return;
+                }
+            } else {
+                e.armed = true;
             }
         }
     }
@@ -148,23 +183,65 @@ export class WorldScene extends Phaser.Scene {
             if (def.once && progressService.isCompleted(flagId)) {
                 continue;
             }
-            const obj = map.findObject('objects', (o) => o.name === def.at.objectName);
-            if (!obj || obj.x == null || obj.y == null) {
-                throw new Error(
-                    `Stage "${this.stage.id}": trigger object "${def.at.objectName}" not found in its map`
-                );
-            }
-            // Tiled rectangles anchor at top-left; point objects (no size) get a one-tile zone.
-            const w = obj.width || TILE_SIZE;
-            const h = obj.height || TILE_SIZE;
-            const cx = obj.width ? obj.x + w / 2 : obj.x;
-            const cy = obj.height ? obj.y + h / 2 : obj.y;
-            const zone = this.add.zone(cx, cy, w, h);
-            this.physics.add.existing(zone, true);
-            // Placeholder visual until stages get real art (PLAN.md §5).
-            const marker = this.add.rectangle(cx, cy, w, h, 0xffd700, 0.3);
+            const { zone, marker } = this.buildZone(map, 'trigger', def.at.objectName, 0xffd700);
             this.triggerZones.push({ def, flagId, zone, marker, armed: true });
         }
+    }
+
+    private createExits(map: Phaser.Tilemaps.Tilemap): void {
+        this.exitZones = (this.stage.exits ?? []).map((def) => {
+            const { zone, marker } = this.buildZone(map, 'exit', def.at.objectName, 0x66ccff);
+            return { def, zone, marker, armed: true };
+        });
+    }
+
+    private buildZone(
+        map: Phaser.Tilemaps.Tilemap,
+        kind: 'trigger' | 'exit',
+        objectName: string,
+        markerColor: number
+    ): { zone: Phaser.GameObjects.Zone; marker: Phaser.GameObjects.Rectangle } {
+        const obj = map.findObject('objects', (o) => o.name === objectName);
+        if (!obj || obj.x == null || obj.y == null) {
+            throw new Error(
+                `Stage "${this.stage.id}": ${kind} object "${objectName}" not found in its map`
+            );
+        }
+        // Tiled rectangles anchor at top-left; point objects (no size) get a one-tile zone.
+        const w = obj.width || TILE_SIZE;
+        const h = obj.height || TILE_SIZE;
+        const cx = obj.width ? obj.x + w / 2 : obj.x;
+        const cy = obj.height ? obj.y + h / 2 : obj.y;
+        const zone = this.add.zone(cx, cy, w, h);
+        this.physics.add.existing(zone, true);
+        // Placeholder visual until stages get real art (PLAN.md §5).
+        const marker = this.add.rectangle(cx, cy, w, h, markerColor, 0.3);
+        return { zone, marker };
+    }
+
+    /** The gate rule (§3.9): every required trigger complete AND the exit's items held. */
+    private tryExit(def: ExitDef): void {
+        if (!progressService.areRequiredTriggersComplete(this.stage)) {
+            this.showToast(i18nService.t('world.exitStageIncomplete'));
+            return;
+        }
+        const missing = (def.requiredItems ?? []).filter((id) => !progressService.hasItem(id));
+        if (missing.length > 0) {
+            const items = missing.map((id) => i18nService.t(getItemById(id).nameKey)).join(', ');
+            this.showToast(i18nService.t('world.exitNeedsItems', { items }));
+            return;
+        }
+        eventBus.emit('stage:advance', { stageId: this.stage.id, to: def.to });
+    }
+
+    /** FlowDirector already recorded the flag (emit is synchronous): show what was
+        gained and remove the consumed zone without waiting for a pause/resume. */
+    private onPickupCollected(def: TriggerDef): void {
+        const names = (def.grantsItems ?? []).map((id) => i18nService.t(getItemById(id).nameKey));
+        if (names.length > 0) {
+            this.showToast(i18nService.t('world.itemObtained', { items: names.join(', ') }));
+        }
+        this.refreshTriggers();
     }
 
     /** Screen-space text → DOM overlay (PLAN.md §3.8). */
@@ -180,6 +257,21 @@ export class WorldScene extends Phaser.Scene {
                 eventBus.emit('stage:advance', { stageId: this.stage.id });
             }
         });
+    }
+
+    /** Transient screen-space feedback (blocked exit / pickup) — DOM overlay (§3.8). */
+    private showToast(text: string): void {
+        this.hideToast();
+        this.toastEl = createOverlayElement('hud-toast');
+        this.toastEl.textContent = text;
+        this.toastTimer = this.time.delayedCall(TOAST_MS, () => this.hideToast());
+    }
+
+    private hideToast(): void {
+        this.toastTimer?.remove();
+        this.toastTimer = null;
+        this.toastEl?.remove();
+        this.toastEl = null;
     }
 
     private refreshTriggers(): void {

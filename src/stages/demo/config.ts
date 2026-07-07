@@ -1,7 +1,8 @@
 import type { StageDef } from '../../config/stages';
 import { SceneKeys } from '../../scenes/keys';
 
-/** Placeholder spine head: completing it unlocks demo-2 (next) and demo-branch (unlockedBy). */
+/** Placeholder spine head: completing it unlocks demo-2 (next) and demo-branch (unlockedBy).
+    Exercises the gated-exit flow: the door needs the stage complete + the demo key. */
 export const demoStage: StageDef = {
     id: 'demo',
     titleKey: 'stage.demo.title',
@@ -37,7 +38,17 @@ export const demoStage: StageDef = {
             },
             required: false,
             once: false
+        },
+        {
+            // Sceneless pickup (§3.2): grants the key the exit door requires.
+            id: 'key-pickup',
+            at: { objectName: 'pickup-key' },
+            activity: { type: 'pickup' },
+            grantsItems: ['demo-key'],
+            required: false,
+            once: true
         }
     ],
+    exits: [{ at: { objectName: 'exit-door' }, requiredItems: ['demo-key'] }],
     next: 'demo-2'
 };

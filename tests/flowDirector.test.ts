@@ -34,6 +34,18 @@ function makeMiniGameTrigger(overrides: Partial<TriggerDef> = {}): TriggerDef {
     };
 }
 
+function makePickupTrigger(overrides: Partial<TriggerDef> = {}): TriggerDef {
+    return {
+        id: 'key-pickup',
+        at: { objectName: 'pickup-key' },
+        activity: { type: 'pickup' },
+        grantsItems: ['demo-key'],
+        required: false,
+        once: true,
+        ...overrides
+    };
+}
+
 function makeVideoTrigger(): TriggerDef {
     return {
         id: 'intro-video',
@@ -128,6 +140,70 @@ describe('FlowDirector activity dispatch', () => {
         expect(scenes.stop).toHaveBeenCalledWith(SceneKeys.Video);
         expect(progress.isCompleted('demo/intro-video')).toBe(true);
         expect(scenes.resume).toHaveBeenCalledWith(SceneKeys.World);
+    });
+});
+
+describe('FlowDirector pickup handling', () => {
+    it('records the flag and grants items without pausing the world or starting a scene', () => {
+        const { bus, progress, scenes } = makeDirector();
+
+        bus.emit('activity:start', { stageId: 'demo', trigger: makePickupTrigger() });
+
+        expect(progress.isCompleted('demo/key-pickup')).toBe(true);
+        expect(progress.hasItem('demo-key')).toBe(true);
+        expect(scenes.pause).not.toHaveBeenCalled();
+        expect(scenes.start).not.toHaveBeenCalled();
+    });
+
+    it('a pickup that sets the last required flag completes the stage', () => {
+        const { bus, progress } = makeDirector();
+        const onStageComplete = vi.fn();
+        bus.on('stage:complete', onStageComplete);
+
+        // demo-2's single registered required trigger, collected as a pickup.
+        bus.emit('activity:start', {
+            stageId: 'demo-2',
+            trigger: makePickupTrigger({ id: 'template-minigame', required: true })
+        });
+
+        expect(progress.isStageComplete('demo-2')).toBe(true);
+        expect(onStageComplete).toHaveBeenCalledWith({ stageId: 'demo-2' });
+    });
+
+    it('leaves the director idle so the next activity dispatches normally', () => {
+        const { bus, scenes } = makeDirector();
+        bus.emit('activity:start', { stageId: 'demo', trigger: makePickupTrigger() });
+
+        bus.emit('activity:start', { stageId: 'demo', trigger: makeMiniGameTrigger() });
+
+        expect(scenes.pause).toHaveBeenCalledTimes(1);
+        expect(scenes.start).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('FlowDirector item grants', () => {
+    it('grants the trigger items when its activity completes', () => {
+        const { bus, progress } = makeDirector();
+        bus.emit('activity:start', {
+            stageId: 'demo',
+            trigger: makeMiniGameTrigger({ grantsItems: ['demo-key'] })
+        });
+
+        bus.emit('activity:complete', { flagId: 'demo/template-minigame' });
+
+        expect(progress.hasItem('demo-key')).toBe(true);
+    });
+
+    it('does not grant items on abort', () => {
+        const { bus, progress } = makeDirector();
+        bus.emit('activity:start', {
+            stageId: 'demo',
+            trigger: makeMiniGameTrigger({ grantsItems: ['demo-key'] })
+        });
+
+        bus.emit('activity:abort', { flagId: 'demo/template-minigame' });
+
+        expect(progress.hasItem('demo-key')).toBe(false);
     });
 });
 
@@ -280,5 +356,16 @@ describe('FlowDirector stage completion', () => {
         bus.emit('stage:advance', { stageId: 'demo-2' });
 
         expect(scenes.start).toHaveBeenCalledWith(SceneKeys.StageSelect);
+    });
+
+    it('stage:advance with `to` (a branch exit) starts that stage instead of next', () => {
+        const { bus, scenes } = makeDirector();
+
+        bus.emit('stage:advance', { stageId: 'demo', to: 'demo-branch' });
+
+        expect(scenes.start).toHaveBeenCalledWith(
+            SceneKeys.World,
+            expect.objectContaining({ stage: expect.objectContaining({ id: 'demo-branch' }) })
+        );
     });
 });

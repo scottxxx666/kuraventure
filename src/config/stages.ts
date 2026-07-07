@@ -1,4 +1,5 @@
 import type { MessageKey } from '../services/I18nService';
+import type { ItemId } from './items';
 import { demoStage } from '../stages/demo/config';
 import { demo2Stage } from '../stages/demo-2/config';
 import { demoBranchStage } from '../stages/demo-branch/config';
@@ -10,6 +11,8 @@ import { demoBranchStage } from '../stages/demo-branch/config';
 
 export type ActivityRef =
     | { type: 'minigame'; sceneKey: string }
+    /** Sceneless map pickup: FlowDirector records the flag without pausing the world. */
+    | { type: 'pickup' }
     | {
           type: 'video';
           videoKey: string;
@@ -24,10 +27,23 @@ export interface TriggerDef {
     /** Named object in the stage's Tiled map (zone or NPC spawn). */
     at: { objectName: string };
     activity: ActivityRef;
+    /** Items granted when this trigger completes (never on abort). */
+    grantsItems?: ItemId[];
     /** Counts toward stage completion. */
     required: boolean;
     /** If true, consumed (hidden) once completed. */
     once: boolean;
+}
+
+/** In-map gated door (§3.9): opens when the stage's required triggers are all
+    complete AND `requiredItems` are held; walking in advances the flow. */
+export interface ExitDef {
+    /** Named object in the stage's Tiled map. */
+    at: { objectName: string };
+    /** Destination stage; omitted = this stage's `next` (none → stage select). */
+    to?: string;
+    /** Items the player must hold, on top of the stage being complete. */
+    requiredItems?: ItemId[];
 }
 
 export interface StageDef {
@@ -40,6 +56,8 @@ export interface StageDef {
     /** Player spawn point object in the Tiled map. */
     spawn: { objectName: string };
     triggers: TriggerDef[];
+    /** Gated doors; when present they replace the press-A advance prompt. */
+    exits?: ExitDef[];
     /** Default next stage (the "mostly linear" spine). */
     next?: string;
     /** Stage IDs that must be complete first (branch/optional stages). */

@@ -4,9 +4,10 @@ import { defaultStorage } from './storage';
 import type { KeyValueStorage } from './storage';
 
 /**
- * Completion-flag persistence + unlock derivation (PLAN.md §3.4).
- * Trigger flags are `${stageId}/${triggerId}`; only flags are ever persisted —
- * map state and unlocking are derived from them.
+ * Completion-flag + item-inventory persistence, unlock derivation (PLAN.md §3.4).
+ * Trigger flags are `${stageId}/${triggerId}`. Items are permanent booleans
+ * granted by triggers. Only flags and the inventory are persisted — map state
+ * and unlocking are derived from them.
  * Pure TS — no Phaser imports — unit-testable.
  */
 
@@ -15,11 +16,13 @@ const STORAGE_KEY = 'kuraventure.progress.v1';
 interface StoredProgress {
     completedTriggers: string[];
     completedStages: string[];
+    items: string[];
 }
 
 export class ProgressService {
     private readonly completedTriggers = new Set<string>();
     private readonly completedStages = new Set<string>();
+    private readonly items = new Set<string>();
 
     /** Pass null for a purely in-memory store (also the fallback when storage fails). */
     constructor(private readonly storage: KeyValueStorage | null = defaultStorage()) {
@@ -42,12 +45,33 @@ export class ProgressService {
         this.persist();
     }
 
+    grantItem(itemId: string): void {
+        if (this.items.has(itemId)) {
+            return;
+        }
+        this.items.add(itemId);
+        this.persist();
+    }
+
     isCompleted(flagId: string): boolean {
         return this.completedTriggers.has(flagId);
     }
 
     isStageComplete(stageId: string): boolean {
         return this.completedStages.has(stageId);
+    }
+
+    hasItem(itemId: string): boolean {
+        return this.items.has(itemId);
+    }
+
+    /** True when every `required: true` trigger's flag is set (vacuously true
+        with no required triggers) — the stage-completion rule (§3.2), also used
+        by exit gating (§3.9). */
+    areRequiredTriggersComplete(stage: StageDef): boolean {
+        return stage.triggers
+            .filter((t) => t.required)
+            .every((t) => this.isCompleted(`${stage.id}/${t.id}`));
     }
 
     /**
@@ -94,6 +118,12 @@ export class ProgressService {
                     this.completedStages.add(id);
                 }
             }
+            // `items` is absent in pre-inventory saves — treat it as empty.
+            for (const id of Array.isArray(data.items) ? data.items : []) {
+                if (typeof id === 'string') {
+                    this.items.add(id);
+                }
+            }
         } catch {
             // Corrupt or unreadable storage — start fresh in memory.
         }
@@ -105,7 +135,8 @@ export class ProgressService {
         }
         const data: StoredProgress = {
             completedTriggers: [...this.completedTriggers],
-            completedStages: [...this.completedStages]
+            completedStages: [...this.completedStages],
+            items: [...this.items]
         };
         try {
             this.storage.setItem(STORAGE_KEY, JSON.stringify(data));

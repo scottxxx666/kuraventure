@@ -30,6 +30,17 @@ describe('stage registry', () => {
         }
     });
 
+    it('every exit destination points at a registered stage', () => {
+        const ids = new Set(STAGES.map((s) => s.id));
+        for (const stage of STAGES) {
+            for (const exit of stage.exits ?? []) {
+                if (exit.to !== undefined) {
+                    expect(ids.has(exit.to), `${stage.id} exit.to = ${exit.to}`).toBe(true);
+                }
+            }
+        }
+    });
+
     it('getStageById returns the matching stage', () => {
         expect(getStageById('demo').id).toBe('demo');
     });

@@ -15,8 +15,9 @@ export interface GameEvents {
     'activity:abort': { flagId: string };
     /** Every required trigger of the stage is complete; WorldScene shows the advance prompt. */
     'stage:complete': { stageId: string };
-    /** Player confirmed the prompt; FlowDirector starts `next` or returns to stage select. */
-    'stage:advance': { stageId: string };
+    /** Player confirmed the prompt / walked through an open exit; FlowDirector starts
+        `to` (a branch door's destination), else `next`, else returns to stage select. */
+    'stage:advance': { stageId: string; to?: string };
     /** Locale switched (I18nService); UI re-renders its strings, ui/fonts swaps the font. */
     'locale:changed': { locale: Locale };
 }

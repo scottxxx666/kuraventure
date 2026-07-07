@@ -63,7 +63,8 @@ describe('ProgressService persistence', () => {
 
         expect(JSON.parse(storage.data.get(STORAGE_KEY)!)).toEqual({
             completedTriggers: ['head/door', 'head/chest'],
-            completedStages: ['head']
+            completedStages: ['head'],
+            items: []
         });
     });
 
@@ -93,6 +94,80 @@ describe('ProgressService persistence', () => {
     });
 });
 
+describe('ProgressService item inventory', () => {
+    it('grants and persists items across instances sharing a storage', () => {
+        const storage = makeStorage();
+        const first = new ProgressService(storage);
+        first.grantItem('demo-key');
+
+        const second = new ProgressService(storage);
+        expect(second.hasItem('demo-key')).toBe(true);
+        expect(second.hasItem('other-key')).toBe(false);
+    });
+
+    it('loads pre-inventory saves (no items field) with an empty inventory', () => {
+        const storage = makeStorage({
+            [STORAGE_KEY]: JSON.stringify({
+                completedTriggers: ['head/door'],
+                completedStages: ['head']
+            })
+        });
+        const progress = new ProgressService(storage);
+        expect(progress.isCompleted('head/door')).toBe(true);
+        expect(progress.hasItem('demo-key')).toBe(false);
+    });
+
+    it('re-granting an already-held item does not rewrite storage', () => {
+        const storage = makeStorage();
+        const progress = new ProgressService(storage);
+        progress.grantItem('demo-key');
+        storage.data.clear();
+
+        progress.grantItem('demo-key');
+        expect(storage.data.has(STORAGE_KEY)).toBe(false);
+    });
+
+    it('ignores a malformed items field', () => {
+        const storage = makeStorage({
+            [STORAGE_KEY]: JSON.stringify({
+                completedTriggers: [],
+                completedStages: [],
+                items: 'oops'
+            })
+        });
+        expect(new ProgressService(storage).hasItem('oops')).toBe(false);
+    });
+});
+
+describe('ProgressService.areRequiredTriggersComplete', () => {
+    const trigger = (id: string, required: boolean): StageDef['triggers'][number] => ({
+        id,
+        at: { objectName: id },
+        activity: { type: 'pickup' },
+        required,
+        once: true
+    });
+    const gated = stage('gated', { triggers: [trigger('boss', true), trigger('bonus', false)] });
+
+    it('is true only when every required trigger flag is set', () => {
+        const progress = new ProgressService(null);
+        expect(progress.areRequiredTriggersComplete(gated)).toBe(false);
+        progress.markCompleted('gated/boss');
+        expect(progress.areRequiredTriggersComplete(gated)).toBe(true);
+    });
+
+    it('ignores optional triggers', () => {
+        const progress = new ProgressService(null);
+        progress.markCompleted('gated/bonus');
+        expect(progress.areRequiredTriggersComplete(gated)).toBe(false);
+    });
+
+    it('is vacuously true for a stage with no required triggers', () => {
+        const progress = new ProgressService(null);
+        expect(progress.areRequiredTriggersComplete(stage('empty'))).toBe(true);
+    });
+});
+
 describe('ProgressService storage-failure fallback', () => {
     const throwingStorage: KeyValueStorage = {
         getItem: () => {
@@ -107,8 +182,10 @@ describe('ProgressService storage-failure fallback', () => {
         const progress = new ProgressService(throwingStorage);
         progress.markCompleted('head/door');
         progress.markStageCompleted('head');
+        progress.grantItem('demo-key');
 
         expect(progress.isCompleted('head/door')).toBe(true);
+        expect(progress.hasItem('demo-key')).toBe(true);
         expect(unlockedIds(progress)).toContain('middle');
     });
 

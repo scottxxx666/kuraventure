@@ -10,7 +10,7 @@
   "tilewidth": 16,
   "tileheight": 16,
   "nextlayerid": 4,
-  "nextobjectid": 5,
+  "nextobjectid": 7,
   "tilesets": [
     {
       "firstgid": 1,
@@ -1315,6 +1315,28 @@
           "type": "",
           "x": 416,
           "y": 80,
+          "width": 32,
+          "height": 32,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 5,
+          "name": "pickup-key",
+          "type": "",
+          "x": 320,
+          "y": 256,
+          "width": 16,
+          "height": 16,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 6,
+          "name": "exit-door",
+          "type": "",
+          "x": 432,
+          "y": 272,
           "width": 32,
           "height": 32,
           "rotation": 0,

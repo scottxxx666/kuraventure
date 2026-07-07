@@ -57,6 +57,27 @@ describe('I18nService', () => {
         expect(i18n.t('stageSelect.title')).toBe(zhTW['stageSelect.title']);
     });
 
+    it('t() interpolates {name} placeholders from params', () => {
+        const i18n = new I18nService(null, new EventBus());
+        expect(i18n.t('world.exitNeedsItems', { items: 'Demo Key' })).toBe('You need: Demo Key');
+    });
+
+    it('t() leaves unknown placeholders untouched and ignores extra params', () => {
+        const i18n = new I18nService(null, new EventBus());
+        expect(i18n.t('world.exitNeedsItems', { other: 'x' })).toBe(en['world.exitNeedsItems']);
+        expect(i18n.t('menu.title', { items: 'x' })).toBe(en['menu.title']);
+    });
+
+    it('every locale interpolates the {items} placeholder', () => {
+        const i18n = new I18nService(null, new EventBus());
+        for (const locale of LOCALES) {
+            i18n.setLocale(locale);
+            const text = i18n.t('world.exitNeedsItems', { items: 'XYZ' });
+            expect(text).toContain('XYZ');
+            expect(text).not.toContain('{items}');
+        }
+    });
+
     it('persists the choice and restores it in a new instance', () => {
         const storage = makeStorage();
         new I18nService(storage, new EventBus()).setLocale('ko');

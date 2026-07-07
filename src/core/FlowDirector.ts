@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import type { ItemId } from '../config/items';
 import { getStageById } from '../config/stages';
 import type { TriggerDef } from '../config/stages';
 import { SceneKeys } from '../scenes/keys';
@@ -19,7 +20,12 @@ const FLOW_SCENES = [SceneKeys.MainMenu, SceneKeys.StageSelect, SceneKeys.World]
  */
 export class FlowDirector {
     private game: Phaser.Game | null = null;
-    private activeActivity: { sceneKey: string; flagId: string; stageId: string } | null = null;
+    private activeActivity: {
+        sceneKey: string;
+        flagId: string;
+        stageId: string;
+        grantsItems?: ItemId[];
+    } | null = null;
 
     constructor(
         private readonly bus: EventBus = eventBus,
@@ -28,7 +34,7 @@ export class FlowDirector {
         bus.on('activity:start', (payload) => this.onActivityStart(payload));
         bus.on('activity:complete', (payload) => this.onActivityComplete(payload));
         bus.on('activity:abort', () => this.onActivityAbort());
-        bus.on('stage:advance', ({ stageId }) => this.onStageAdvance(stageId));
+        bus.on('stage:advance', ({ stageId, to }) => this.onStageAdvance(stageId, to));
     }
 
     /** Called once from main.ts after the Phaser.Game is created. */
@@ -57,10 +63,17 @@ export class FlowDirector {
         }
         const scenes = this.requireScenes();
         const { activity } = trigger;
+        const flagId = `${stageId}/${trigger.id}`;
+        // Pickups are sceneless (PLAN.md §3.2): record + grant right away, the world keeps running.
+        if (activity.type === 'pickup') {
+            this.progress.markCompleted(flagId);
+            this.grantItems(trigger.grantsItems);
+            this.checkStageCompletion(stageId);
+            return;
+        }
         // Every video plays in the one generic VideoScene (PLAN.md §3.6).
         const sceneKey = activity.type === 'video' ? SceneKeys.Video : activity.sceneKey;
-        const flagId = `${stageId}/${trigger.id}`;
-        this.activeActivity = { sceneKey, flagId, stageId };
+        this.activeActivity = { sceneKey, flagId, stageId, grantsItems: trigger.grantsItems };
         scenes.pause(SceneKeys.World);
         scenes.start(sceneKey, { activity, flagId });
     }
@@ -70,10 +83,11 @@ export class FlowDirector {
             return; // stale/duplicate completion; nothing to resume
         }
         const scenes = this.requireScenes();
-        const { sceneKey, stageId } = this.activeActivity;
+        const { sceneKey, stageId, grantsItems } = this.activeActivity;
         scenes.stop(sceneKey);
         this.activeActivity = null;
         this.progress.markCompleted(flagId);
+        this.grantItems(grantsItems);
         // WorldScene refreshes trigger state (once-triggers disappear) on its RESUME event.
         scenes.resume(SceneKeys.World);
         this.checkStageCompletion(stageId);
@@ -90,25 +104,27 @@ export class FlowDirector {
         scenes.resume(SceneKeys.World);
     }
 
+    private grantItems(items: ItemId[] | undefined): void {
+        for (const item of items ?? []) {
+            this.progress.grantItem(item);
+        }
+    }
+
     private checkStageCompletion(stageId: string): void {
         if (this.progress.isStageComplete(stageId)) {
             return; // replaying a completed stage — flags stay, no re-announcement
         }
-        const stage = getStageById(stageId);
-        const complete = stage.triggers
-            .filter((t) => t.required)
-            .every((t) => this.progress.isCompleted(`${stageId}/${t.id}`));
-        if (!complete) {
+        if (!this.progress.areRequiredTriggersComplete(getStageById(stageId))) {
             return;
         }
         this.progress.markStageCompleted(stageId);
         this.bus.emit('stage:complete', { stageId });
     }
 
-    private onStageAdvance(stageId: string): void {
-        const next = getStageById(stageId).next;
-        if (next) {
-            this.startStage(next);
+    private onStageAdvance(stageId: string, to?: string): void {
+        const target = to ?? getStageById(stageId).next;
+        if (target) {
+            this.startStage(target);
         } else {
             this.openStageSelect();
         }
