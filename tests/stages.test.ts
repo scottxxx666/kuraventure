@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { STAGES, getStageById } from '../src/config/stages';
+import type { TriggerDef } from '../src/config/stages';
 
 describe('stage registry', () => {
     it('is not empty', () => {
@@ -66,5 +67,36 @@ describe('stage registry', () => {
 
     it('getStageById throws on an unknown id', () => {
         expect(() => getStageById('nope')).toThrow(/Unknown stage id "nope"/);
+    });
+
+    it('every talk activity references a non-empty graphId', () => {
+        for (const stage of STAGES) {
+            for (const trigger of stage.triggers) {
+                if (trigger.activity.type === 'talk') {
+                    expect(trigger.activity.graphId.length, `${stage.id}/${trigger.id}`).toBeGreaterThan(0);
+                }
+            }
+        }
+    });
+});
+
+describe('demo stage npc-villager talk trigger', () => {
+    const trigger = getStageById('demo').triggers.find((t) => t.id === 'npc-villager') as
+        | TriggerDef
+        | undefined;
+
+    it('is registered as a talk activity pointed at the npc-villager graph', () => {
+        expect(trigger).toBeDefined();
+        expect(trigger?.activity).toMatchObject({ type: 'talk', graphId: 'npc-villager' });
+    });
+
+    it('is optional and replayable — a flavor chat, not a gate on stage completion', () => {
+        expect(trigger?.required).toBe(false);
+        expect(trigger?.once).toBe(false);
+    });
+
+    it('is not a requirement of the stage exit', () => {
+        const exit = getStageById('demo').exits?.[0];
+        expect(exit?.requiredTriggers).not.toContain('npc-villager');
     });
 });

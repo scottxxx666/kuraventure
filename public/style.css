@@ -147,6 +147,51 @@ html:lang(ja) #ui-overlay {
     background: rgba(0, 0, 0, 0.6);
 }
 
+/* Interactive NPC conversation (src/scenes/TalkScene.ts, PLAN.md §3.11): a
+   bottom dialogue box (speaker + line + advance hint), or — while the story
+   is waiting on a choice — a vertical list of buttons in the same spot; the
+   two never show at once. Wider than .subtitle-bar since lines aren't
+   pre-timed and choice text can run long. */
+.talk-box {
+    position: absolute;
+    bottom: calc(var(--px) * 6px);
+    left: calc(var(--px) * 6px);
+    right: calc(var(--px) * 6px);
+    font-size: calc(var(--px) * 12px);
+    color: #fff;
+    background: rgba(0, 0, 0, 0.7);
+    border: calc(var(--px) * 1px) solid #666;
+    padding: calc(var(--px) * 4px) calc(var(--px) * 6px);
+}
+
+.talk-speaker {
+    color: #ffe27a;
+    margin-bottom: calc(var(--px) * 2px);
+}
+
+.talk-hint {
+    text-align: right;
+    color: #aaa;
+    animation: menu-blink 1.4s step-end infinite;
+}
+
+.talk-choices {
+    position: absolute;
+    bottom: calc(var(--px) * 6px);
+    left: calc(var(--px) * 6px);
+    right: calc(var(--px) * 6px);
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--px) * 2px);
+}
+
+/* .menu-button supplies font/border/padding/cursor; selected state reuses
+   its [data-active='true'] rule (keyboard/joystick nav sets it). */
+.talk-choice {
+    width: 100%;
+    text-align: left;
+}
+
 /* Pizza Run fail banner (src/scenes/minigames/pizza-run/). */
 .pizza-run-failed {
     color: #ff5a5a;

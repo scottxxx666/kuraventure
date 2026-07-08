@@ -7,6 +7,13 @@ const GUIDE_PORTRAITS = {
     player: 'assets/images/demo/player.png'
 };
 
+/** No dedicated villager art yet — reuses the guide's placeholder portrait
+    under the `villager` speaker key (§3.11 demo NPC). */
+const VILLAGER_PORTRAITS = {
+    villager: 'assets/images/demo/npc-guide.png',
+    player: 'assets/images/demo/player.png'
+};
+
 /** Placeholder spine head: completing it unlocks demo-2 (next) and demo-branch (unlockedBy).
     Exercises the full gating flow: recruit the guide NPC (who asks for the finished
     training + the demo key) and the exit door opens. */
@@ -67,6 +74,17 @@ export const demoStage: StageDef = {
             blockedDialogue: { trackId: 'npc-guide-ask', portraits: GUIDE_PORTRAITS },
             required: true,
             once: true
+        },
+        {
+            // Talk-system demo (PLAN.md §3.11): small charming flavor chat with the
+            // village NPC, replayable. Exercises hasItem() branching, two speakers,
+            // and a choice where only one branch calls ~complete() (the other just
+            // ends — nothing recorded either way since this trigger is optional).
+            id: 'npc-villager',
+            at: { objectName: 'npc-villager' },
+            activity: { type: 'talk', graphId: 'npc-villager', portraits: VILLAGER_PORTRAITS },
+            required: false,
+            once: false
         }
     ],
     exits: [{ at: { objectName: 'exit-door' }, requiredTriggers: ['npc-join'] }],

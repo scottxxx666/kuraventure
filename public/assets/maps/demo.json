@@ -10,7 +10,7 @@
   "tilewidth": 16,
   "tileheight": 16,
   "nextlayerid": 4,
-  "nextobjectid": 8,
+  "nextobjectid": 9,
   "tilesets": [
     {
       "firstgid": 1,
@@ -1350,6 +1350,17 @@
           "y": 272,
           "width": 32,
           "height": 32,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 8,
+          "name": "npc-villager",
+          "type": "",
+          "x": 80,
+          "y": 160,
+          "width": 16,
+          "height": 16,
           "rotation": 0,
           "visible": true
         }

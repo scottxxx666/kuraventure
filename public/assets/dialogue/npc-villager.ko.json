@@ -1,0 +1,10 @@
+{
+    "npc-villager.greet": "오, 안녕하세요! 마을을 산책하기 좋은 날씨네요.",
+    "npc-villager.key-seen": "오, 그거 데모 열쇠인가요? 조심하세요—여기 출구를 열 수 있거든요!",
+    "npc-villager.key-missing": "이 근처가 아직 낯선 것 같네요.",
+    "npc-villager.player-ask": "저 같은 여행자에게 조언해 줄 거 있나요?",
+    "npc-villager.chat.yes": "네, 들려주세요!",
+    "npc-villager.chat.no": "아뇨, 그냥 지나가는 길이에요.",
+    "npc-villager.tip": "땅에 반짝이는 게 있으면 눈여겨보세요—장식인 경우는 거의 없거든요.",
+    "npc-villager.bye": "마음대로 하세요. 안전한 여행 되세요!"
+}

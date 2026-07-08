@@ -9,8 +9,10 @@ and open questions. Where PLAN.md marks something **TBD**, ask the user; do not 
 Status: the framework (PLAN.md milestones 1–7) is **complete** — world/stages,
 activity flow, progress & unlocking, i18n, subtitles, video cutscenes all work,
 exercised by three demo stages (`demo`, `demo-2`, `demo-branch`) with placeholder
-assets. Next: milestone 8 (real stages & mini-games — **TBD: ask the user** for
-the stage list, maps, and mini-game designs; content only, no core changes).
+assets. Since then, interactive NPC talk (Ink/inkjs — PLAN.md §3.11) was added as
+a framework capability alongside timed dialogue. Next: milestone 8 (real stages &
+mini-games — **TBD: ask the user** for the stage list, maps, and mini-game
+designs; content only, no core changes).
 
 ## Dev notes
 

@@ -103,6 +103,7 @@ src/
     WorldScene.ts            # THE reusable map scene (§3.9); one instance serves all stages
     VideoScene.ts            # THE generic cutscene player (§3.6)
     DialogueScene.ts         # THE generic in-world dialogue player (§3.6)
+    TalkScene.ts             # THE generic interactive NPC talk player (§3.11)
     minigames/               # SHARED pool — any stage's trigger can reference any mini-game
       MiniGameScene.ts       # abstract base class — THE mini-game contract (§3.3)
       _template/
@@ -125,6 +126,10 @@ src/
     GameClock.ts             # clock adapter fed by scene UPDATE deltas (pause-aware)
     VideoClock.ts            # clock adapter over video.getCurrentTime() * 1000
     types.ts                 # SubtitleCue, SubtitleTrack, ClockSource
+  dialogue/
+    TalkRunner.ts            # Ink (inkjs) story driver: compile/run graphs, localize
+                              # lines/choices, bind hasItem/hasFlag/grantItem/complete (§3.11)
+    types.ts                 # TalkLine, TalkChoice
   ui/
     domOverlay.ts            # DOM-over-canvas container; --px scaling helpers (§3.8)
     fonts.ts                 # per-locale pixel-font loader (FontFace) + --ui-font swap
@@ -135,6 +140,8 @@ public/assets/
   maps/                      # Tiled JSON, one per stage (+ shared tileset images)
   video/                     # .mp4/.webm cutscenes
   subtitles/                 # <trackId>.<locale>.json cue files (lazy-loaded)
+  dialogue/                  # <graphId>.ink (English source) + <graphId>.<locale>.json
+                              # string tables (zh-TW/ja/ko) for interactive NPC talks (§3.11)
   fonts/                     # Fusion Pixel woff2, one per locale flavor (+ OFL licenses)
   images/ audio/ ...         # stage-specific art under images/<stage-or-minigame-id>/
 tests/                       # vitest unit tests for services & subtitle timing
@@ -172,6 +179,11 @@ export type ActivityRef =
       videoUrl: string;                            // public/assets/video/...
       subtitleTrackId?: string;                    // public/assets/subtitles/<id>.<locale>.json
       skippable: boolean;
+    }
+  | {
+      type: 'talk';                                 // interactive NPC conversation (§3.11)
+      graphId: string;                              // public/assets/dialogue/<graphId>.ink
+      portraits?: Record<string, string>;           // ink `speaker:` tag → image URL
     };
 
 export interface TriggerDef {
@@ -459,11 +471,83 @@ export interface GameInput {
   avoid pixel-precise or twitch-heavy challenges (virtual sticks are imprecise); keep
   critical visuals out of the bottom screen corners (thumbs sit there).
 
+### 3.11 Interactive NPC Talk (Ink)
+
+`TalkScene` (one generic scene, parameterized by a `talk` ActivityRef; launched by
+FlowDirector over the paused world, same lifecycle shape as `DialogueScene`) plays a
+player-driven conversation instead of a timed track: `A` advances a line or confirms
+the highlighted choice, direction up/down moves the choice cursor. Driven by
+`TalkRunner` (`src/dialogue/TalkRunner.ts`), which wraps an Ink story:
+
+- **Why Ink/inkjs**: branching conversation logic (conditions, choices, one-shot
+  side effects) is exactly what Ink is designed for, and authoring stays in a
+  terse text format instead of hand-rolled TS branching trees. `inkjs` is the
+  maintained JS/TS port (by inkle, Ink's own creators). The bare `inkjs` entry is
+  runtime-only (`Story`, for precompiled JSON); the compiler only exists in the
+  `inkjs/full` bundle — `TalkRunner` compiles from `.ink` source at runtime and
+  imports from `inkjs/full` for that reason.
+- **Localization**: one graph is authored in English — `public/assets/dialogue/
+  <graphId>.ink` — English lives directly in the ink text and doubles as the
+  fallback; there is no `en` string table. Every line and choice worth
+  translating carries `# id:<graphId>.<short>` (plus `# speaker:<key>` on
+  lines); tags on a choice go **inside** the brackets
+  (`* [Sure! # id:npc-villager.chat.yes]`) or they don't land on `choice.tags`.
+  Non-English locales are flat tables `public/assets/dialogue/
+  <graphId>.<locale>.json` (`{ "<id>": "<translation>" }`, one entry per id,
+  zh-TW/ja/ko all required). Workflow: write and finish the English graph first
+  (ids stabilize once the conversation logic is right), then translate the ids
+  into each table at the end — a missing id falls back to the English line
+  (warns once) rather than breaking the conversation, so translation can lag
+  content without blocking it. `TalkRunner.currentLine()/currentChoices()`
+  re-resolve against the run's active table on every call (not baked in at
+  read time), so a `locale:changed` mid-conversation only needs an async table
+  swap — the scene re-renders via `onRelocalized()` with no story re-walk.
+- **External function contract** — `TalkRunner` binds all four on every story
+  (binding an undeclared external is harmless — verified); a graph declares
+  (`EXTERNAL hasItem(id)` etc.) only the ones it actually uses:
+  - `hasItem(id)` / `hasFlag(flagId)` — read-only, bound **lookahead-safe**
+    (inkjs may call these speculatively while glue-scanning ahead of the
+    current line; a side effect here would fire spuriously). `hasFlag` takes
+    the full `stageId/triggerId` flag string, same shape as `requiredTriggers`.
+  - `grantItem(id)` / `complete()` — side-effecting, bound **not**
+    lookahead-safe (must fire exactly once, only on lines actually reached).
+- **Completion semantics**: `~ complete()` marks the run; the flag is what
+  `TriggerDef.id` resolves to same as any other activity. `TalkScene` ends the
+  conversation on `wasCompleted()`: true → `activity:complete` (flag recorded,
+  `grantsItems` granted, counts toward `required` stages); false →
+  `activity:abort` (nothing recorded — the trigger stays replayable). A branch
+  that never calls `complete()` is a legitimate "no-op" ending, not an error —
+  e.g. a flavor chat where only one reply matters, or an NPC that just chats
+  without ever gating anything.
+- **`dialogue` vs `talk`, rule of thumb**: timed `dialogue` (§3.6) for
+  scripted, non-interactive beats (cutscene-style lines, the blocked-trigger
+  "here's what I need" nudge); interactive `talk` for NPC conversations the
+  player drives — branching on items/flags, choices, or anything that should
+  feel like *talking to* the NPC rather than watching a beat play out. Both
+  can appear on the same NPC (e.g. `blockedDialogue` for the "not yet" nudge,
+  a `talk` trigger for a separate flavor chat).
+
+**Recipe — add an NPC conversation**:
+1. Write `public/assets/dialogue/<graphId>.ink` in English: tag every line
+   `# id:<graphId>.<short>` (+ `# speaker:<key>` where speaker matters) and
+   every choice's brackets `[... # id:<graphId>.<short>]`; declare only the
+   `EXTERNAL`s actually used; call `~ complete()` on branches that should
+   record the trigger's flag.
+2. Add the three string tables (`<graphId>.zh-TW.json`, `.ja.json`, `.ko.json`)
+   covering every id in the graph — translate once the English is stable.
+3. Add a named point/rect object for the NPC to the stage's Tiled map
+   (`objects` layer).
+4. Add a `TriggerDef` with `activity: { type: 'talk', graphId, portraits? }`
+   pointing `at.objectName` at that map object.
+
 ## 4. Milestones
 
 **1–7 (framework): DONE** — scaffold, world core + input, activity flow, progress &
 unlocking, i18n, subtitle engine, video activity. See git history (`feat: milestone N`)
 for the details of each.
+
+**Framework addition**: interactive NPC talk (`TalkScene` + `TalkRunner`, Ink/inkjs —
+§3.11), exercised by the demo stage's `npc-villager` flavor chat.
 
 Remaining:
 

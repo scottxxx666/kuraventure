@@ -15,6 +15,7 @@ import { TemplateMiniGame } from './scenes/minigames/_template/TemplateMiniGame'
 import { PizzaRunMiniGame } from './scenes/minigames/pizza-run/PizzaRunMiniGame';
 import { PreloadScene } from './scenes/PreloadScene';
 import { StageSelectScene } from './scenes/StageSelectScene';
+import { TalkScene } from './scenes/TalkScene';
 import { VideoScene } from './scenes/VideoScene';
 import { WorldScene } from './scenes/WorldScene';
 
@@ -29,6 +30,7 @@ const game = new Phaser.Game({
         WorldScene,
         VideoScene,
         DialogueScene,
+        TalkScene,
         TemplateMiniGame,
         PizzaRunMiniGame
     ]

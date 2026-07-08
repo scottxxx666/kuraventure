@@ -28,7 +28,11 @@ export type ActivityRef =
           videoUrl: string;
           subtitleTrackId?: string;
           skippable: boolean;
-      };
+      }
+    /** Interactive NPC conversation played by the generic TalkScene over the
+        paused world (PLAN.md §3.11): an Ink graph (assets/dialogue/<graphId>.ink)
+        with optional per-speaker portraits (cue.speaker → image URL). */
+    | { type: 'talk'; graphId: string; portraits?: Record<string, string> };
 
 export interface TriggerDef {
     /** Unique WITHIN the stage; the completion flag is `${stageId}/${id}`. */

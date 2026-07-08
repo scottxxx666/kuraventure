@@ -1,0 +1,10 @@
+{
+    "npc-villager.greet": "おや、こんにちは！村を散歩するにはいい天気だね。",
+    "npc-villager.key-seen": "おや、それはデモのカギかい？気をつけて——ここの出口を開けられるんだよ！",
+    "npc-villager.key-missing": "まだこのあたりに慣れていないみたいだね。",
+    "npc-villager.player-ask": "旅の人に何かアドバイスはある？",
+    "npc-villager.chat.yes": "うん、聞かせて！",
+    "npc-villager.chat.no": "いや、ただ通りかかっただけだよ。",
+    "npc-villager.tip": "地面の光るものに気をつけるといい——ただの飾りじゃないことが多いからね。",
+    "npc-villager.bye": "好きにするといいさ。旅の無事を祈るよ！"
+}

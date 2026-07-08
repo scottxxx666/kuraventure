@@ -7,6 +7,7 @@ export const SceneKeys = {
     World: 'World',
     Video: 'Video',
     Dialogue: 'Dialogue',
+    Talk: 'Talk',
     TemplateMiniGame: 'TemplateMiniGame',
     PizzaRun: 'PizzaRun'
 } as const;

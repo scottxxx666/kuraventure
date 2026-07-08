@@ -1,0 +1,10 @@
+{
+    "npc-villager.greet": "喔，你好呀！在村子裡散步的好天氣，對吧？",
+    "npc-villager.key-seen": "喔，那是示範鑰匙嗎？小心點——那東西能打開這裡的出口喔！",
+    "npc-villager.key-missing": "看你的樣子，好像還在摸索這一帶呢。",
+    "npc-villager.player-ask": "有沒有什麼建議可以給像我這樣的旅行者？",
+    "npc-villager.chat.yes": "當然，說來聽聽！",
+    "npc-villager.chat.no": "不用了，我只是路過。",
+    "npc-villager.tip": "多留意地上閃閃發亮的東西——那很少只是裝飾品喔。",
+    "npc-villager.bye": "隨你便囉。一路平安！"
+}

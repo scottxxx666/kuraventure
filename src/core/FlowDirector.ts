@@ -81,13 +81,15 @@ export class FlowDirector {
             this.checkStageCompletion(stageId);
             return;
         }
-        // Videos/dialogues each play in their one generic scene (PLAN.md §3.6).
+        // Videos/dialogues/talks each play in their one generic scene (PLAN.md §3.6, §3.11).
         const sceneKey =
             activity.type === 'video'
                 ? SceneKeys.Video
                 : activity.type === 'dialogue'
                   ? SceneKeys.Dialogue
-                  : activity.sceneKey;
+                  : activity.type === 'talk'
+                    ? SceneKeys.Talk
+                    : activity.sceneKey;
         this.activeActivity = { sceneKey, flagId, stageId, grantsItems: trigger.grantsItems, transient };
         scenes.pause(SceneKeys.World);
         scenes.start(sceneKey, { activity, flagId });

@@ -57,6 +57,17 @@ function makeDialogueTrigger(overrides: Partial<TriggerDef> = {}): TriggerDef {
     };
 }
 
+function makeTalkTrigger(overrides: Partial<TriggerDef> = {}): TriggerDef {
+    return {
+        id: 'npc-chat',
+        at: { objectName: 'npc-flavor' },
+        activity: { type: 'talk', graphId: 'npc-flavor' },
+        required: false,
+        once: false,
+        ...overrides
+    };
+}
+
 function makeVideoTrigger(): TriggerDef {
     return {
         id: 'intro-video',
@@ -151,6 +162,32 @@ describe('FlowDirector activity dispatch', () => {
         expect(scenes.stop).toHaveBeenCalledWith(SceneKeys.Video);
         expect(progress.isCompleted('demo/intro-video')).toBe(true);
         expect(scenes.resume).toHaveBeenCalledWith(SceneKeys.World);
+    });
+});
+
+describe('FlowDirector talk dispatch', () => {
+    it('routes talk activities into the generic TalkScene with { activity, flagId }', () => {
+        const { bus, scenes } = makeDirector();
+        const trigger = makeTalkTrigger();
+
+        bus.emit('activity:start', { stageId: 'demo', trigger });
+
+        expect(scenes.pause).toHaveBeenCalledWith(SceneKeys.World);
+        expect(scenes.start).toHaveBeenCalledWith(SceneKeys.Talk, {
+            activity: trigger.activity,
+            flagId: 'demo/npc-chat'
+        });
+    });
+
+    it('a flavor NPC (no ~ complete()) aborting leaves the trigger replayable', () => {
+        const { bus, progress, scenes } = makeDirector();
+        bus.emit('activity:start', { stageId: 'demo', trigger: makeTalkTrigger() });
+
+        bus.emit('activity:abort', { flagId: 'demo/npc-chat' });
+
+        expect(scenes.stop).toHaveBeenCalledWith(SceneKeys.Talk);
+        expect(scenes.resume).toHaveBeenCalledWith(SceneKeys.World);
+        expect(progress.isCompleted('demo/npc-chat')).toBe(false);
     });
 });
 

@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "inkjs": "^2.4.0",
     "phaser": "3.90.0"
   },
   "devDependencies": {
