@@ -1,0 +1,7 @@
+{
+    "cues": [
+        { "start": 0, "end": 2600, "speaker": "guide", "text": "啊，旅行者！前面的門不會為陌生人開啟。" },
+        { "start": 3000, "end": 6200, "speaker": "guide", "text": "先完成訓練，再把示範鑰匙帶來，我就加入你的隊伍。" },
+        { "start": 6600, "end": 8000, "speaker": "player", "text": "交給我吧！" }
+    ]
+}

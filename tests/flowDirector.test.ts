@@ -46,6 +46,17 @@ function makePickupTrigger(overrides: Partial<TriggerDef> = {}): TriggerDef {
     };
 }
 
+function makeDialogueTrigger(overrides: Partial<TriggerDef> = {}): TriggerDef {
+    return {
+        id: 'npc-join',
+        at: { objectName: 'npc-guide' },
+        activity: { type: 'dialogue', trackId: 'npc-guide-join' },
+        required: false,
+        once: true,
+        ...overrides
+    };
+}
+
 function makeVideoTrigger(): TriggerDef {
     return {
         id: 'intro-video',
@@ -140,6 +151,54 @@ describe('FlowDirector activity dispatch', () => {
         expect(scenes.stop).toHaveBeenCalledWith(SceneKeys.Video);
         expect(progress.isCompleted('demo/intro-video')).toBe(true);
         expect(scenes.resume).toHaveBeenCalledWith(SceneKeys.World);
+    });
+});
+
+describe('FlowDirector dialogue dispatch', () => {
+    it('routes dialogue activities into the generic DialogueScene with { activity, flagId }', () => {
+        const { bus, scenes } = makeDirector();
+        const trigger = makeDialogueTrigger();
+
+        bus.emit('activity:start', { stageId: 'demo', trigger });
+
+        expect(scenes.pause).toHaveBeenCalledWith(SceneKeys.World);
+        expect(scenes.start).toHaveBeenCalledWith(SceneKeys.Dialogue, {
+            activity: trigger.activity,
+            flagId: 'demo/npc-join'
+        });
+    });
+
+    it('a transient run completes without recording the flag, items, or stage', () => {
+        const { bus, progress, scenes } = makeDirector();
+        const onStageComplete = vi.fn();
+        bus.on('stage:complete', onStageComplete);
+        bus.emit('activity:start', {
+            stageId: 'demo',
+            trigger: makeDialogueTrigger({ grantsItems: ['demo-key'] }),
+            transient: true
+        });
+
+        bus.emit('activity:complete', { flagId: 'demo/npc-join' });
+
+        expect(scenes.stop).toHaveBeenCalledWith(SceneKeys.Dialogue);
+        expect(scenes.resume).toHaveBeenCalledWith(SceneKeys.World);
+        expect(progress.isCompleted('demo/npc-join')).toBe(false);
+        expect(progress.hasItem('demo-key')).toBe(false);
+        expect(onStageComplete).not.toHaveBeenCalled();
+    });
+
+    it('accepts a new activity after a transient run completes', () => {
+        const { bus, scenes } = makeDirector();
+        bus.emit('activity:start', { stageId: 'demo', trigger: makeDialogueTrigger(), transient: true });
+        bus.emit('activity:complete', { flagId: 'demo/npc-join' });
+
+        bus.emit('activity:start', { stageId: 'demo', trigger: makeMiniGameTrigger() });
+
+        expect(scenes.pause).toHaveBeenCalledTimes(2);
+        expect(scenes.start).toHaveBeenLastCalledWith(
+            SceneKeys.TemplateMiniGame,
+            expect.objectContaining({ flagId: 'demo/template-minigame' })
+        );
     });
 });
 
@@ -308,12 +367,21 @@ describe('FlowDirector stage completion', () => {
         bus.emit('activity:complete', { flagId: `${stageId}/${trigger.id}` });
     }
 
+    /** The demo stage's required triggers (template-minigame + npc-join), in order. */
+    function completeDemoStage(bus: EventBus): void {
+        completeTrigger(bus, 'demo', makeMiniGameTrigger());
+        completeTrigger(bus, 'demo', makeDialogueTrigger({ required: true }));
+    }
+
     it('marks the stage complete and emits stage:complete when all required triggers finish', () => {
         const { bus, progress } = makeDirector();
         const onStageComplete = vi.fn();
         bus.on('stage:complete', onStageComplete);
 
         completeTrigger(bus, 'demo', makeMiniGameTrigger());
+        expect(progress.isStageComplete('demo')).toBe(false); // npc-join still pending
+
+        completeTrigger(bus, 'demo', makeDialogueTrigger({ required: true }));
 
         expect(progress.isStageComplete('demo')).toBe(true);
         expect(onStageComplete).toHaveBeenCalledWith({ stageId: 'demo' });
@@ -324,8 +392,8 @@ describe('FlowDirector stage completion', () => {
         const onStageComplete = vi.fn();
         bus.on('stage:complete', onStageComplete);
 
-        completeTrigger(bus, 'demo', makeMiniGameTrigger());
-        completeTrigger(bus, 'demo', makeMiniGameTrigger());
+        completeDemoStage(bus);
+        completeDemoStage(bus);
 
         expect(onStageComplete).toHaveBeenCalledTimes(1);
     });
@@ -333,7 +401,7 @@ describe('FlowDirector stage completion', () => {
     it('completing a stage unlocks its next and unlockedBy stages', () => {
         const { bus, progress } = makeDirector();
 
-        completeTrigger(bus, 'demo', makeMiniGameTrigger());
+        completeDemoStage(bus);
 
         const unlocked = progress.getUnlockedStages().map((s) => s.id);
         expect(unlocked).toEqual(['demo', 'demo-2', 'demo-branch']);

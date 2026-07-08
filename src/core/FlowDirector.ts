@@ -25,6 +25,8 @@ export class FlowDirector {
         flagId: string;
         stageId: string;
         grantsItems?: ItemId[];
+        /** Blocked-dialogue run (§3.9): on completion nothing is recorded. */
+        transient?: boolean;
     } | null = null;
 
     constructor(
@@ -57,7 +59,15 @@ export class FlowDirector {
         scenes.start(SceneKeys.StageSelect);
     }
 
-    private onActivityStart({ stageId, trigger }: { stageId: string; trigger: TriggerDef }): void {
+    private onActivityStart({
+        stageId,
+        trigger,
+        transient
+    }: {
+        stageId: string;
+        trigger: TriggerDef;
+        transient?: boolean;
+    }): void {
         if (this.activeActivity) {
             return; // an activity is already running; ignore re-entrant triggers
         }
@@ -71,9 +81,14 @@ export class FlowDirector {
             this.checkStageCompletion(stageId);
             return;
         }
-        // Every video plays in the one generic VideoScene (PLAN.md §3.6).
-        const sceneKey = activity.type === 'video' ? SceneKeys.Video : activity.sceneKey;
-        this.activeActivity = { sceneKey, flagId, stageId, grantsItems: trigger.grantsItems };
+        // Videos/dialogues each play in their one generic scene (PLAN.md §3.6).
+        const sceneKey =
+            activity.type === 'video'
+                ? SceneKeys.Video
+                : activity.type === 'dialogue'
+                  ? SceneKeys.Dialogue
+                  : activity.sceneKey;
+        this.activeActivity = { sceneKey, flagId, stageId, grantsItems: trigger.grantsItems, transient };
         scenes.pause(SceneKeys.World);
         scenes.start(sceneKey, { activity, flagId });
     }
@@ -83,9 +98,14 @@ export class FlowDirector {
             return; // stale/duplicate completion; nothing to resume
         }
         const scenes = this.requireScenes();
-        const { sceneKey, stageId, grantsItems } = this.activeActivity;
+        const { sceneKey, stageId, grantsItems, transient } = this.activeActivity;
         scenes.stop(sceneKey);
         this.activeActivity = null;
+        if (transient) {
+            // Blocked-dialogue run: nothing is recorded, the trigger stays incomplete.
+            scenes.resume(SceneKeys.World);
+            return;
+        }
         this.progress.markCompleted(flagId);
         this.grantItems(grantsItems);
         // WorldScene refreshes trigger state (once-triggers disappear) on its RESUME event.

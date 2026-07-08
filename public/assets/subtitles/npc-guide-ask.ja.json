@@ -1,0 +1,7 @@
+{
+    "cues": [
+        { "start": 0, "end": 2600, "speaker": "guide", "text": "おや、旅の人！この先の扉はよそ者には開かないよ。" },
+        { "start": 3000, "end": 6200, "speaker": "guide", "text": "訓練を終えて、デモのカギを持ってきてくれ。そうしたら仲間になろう。" },
+        { "start": 6600, "end": 8000, "speaker": "player", "text": "まかせて！" }
+    ]
+}

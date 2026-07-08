@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { getItemById } from '../config/items';
+import type { ItemId } from '../config/items';
 import type { ExitDef, StageDef, TriggerDef } from '../config/stages';
 import { eventBus } from '../core/EventBus';
 import { inputService } from '../input/InputService';
@@ -149,13 +150,7 @@ export class WorldScene extends Phaser.Scene {
             if (this.physics.overlap(this.player, t.zone)) {
                 if (t.armed) {
                     t.armed = false;
-                    const isPickup = t.def.activity.type === 'pickup';
-                    // FlowDirector pauses this scene and launches the activity (synchronously) —
-                    // except pickups, which it records immediately without pausing (§3.2).
-                    eventBus.emit('activity:start', { stageId: this.stage.id, trigger: t.def });
-                    if (isPickup) {
-                        this.onPickupCollected(t.def);
-                    }
+                    this.fireTrigger(t.def);
                     return;
                 }
             } else {
@@ -219,19 +214,64 @@ export class WorldScene extends Phaser.Scene {
         return { zone, marker };
     }
 
-    /** The gate rule (§3.9): every required trigger complete AND the exit's items held. */
-    private tryExit(def: ExitDef): void {
-        if (!progressService.areRequiredTriggersComplete(this.stage)) {
-            this.showToast(i18nService.t('world.exitStageIncomplete'));
+    /** What a trigger/exit still lacks (§3.9): unfinished same-stage triggers + unheld items. */
+    private missingRequirements(def: { requiredTriggers?: string[]; requiredItems?: ItemId[] }): {
+        triggers: string[];
+        items: ItemId[];
+    } {
+        return {
+            triggers: (def.requiredTriggers ?? []).filter(
+                (id) => !progressService.isCompleted(`${this.stage.id}/${id}`)
+            ),
+            items: (def.requiredItems ?? []).filter((id) => !progressService.hasItem(id))
+        };
+    }
+
+    /** Fires the trigger's activity, or its blocked feedback when requirements are unmet (§3.9). */
+    private fireTrigger(def: TriggerDef): void {
+        const missing = this.missingRequirements(def);
+        if (missing.triggers.length === 0 && missing.items.length === 0) {
+            const isPickup = def.activity.type === 'pickup';
+            // FlowDirector pauses this scene and launches the activity (synchronously) —
+            // except pickups, which it records immediately without pausing (§3.2).
+            eventBus.emit('activity:start', { stageId: this.stage.id, trigger: def });
+            if (isPickup) {
+                this.onPickupCollected(def);
+            }
             return;
         }
-        const missing = (def.requiredItems ?? []).filter((id) => !progressService.hasItem(id));
-        if (missing.length > 0) {
-            const items = missing.map((id) => i18nService.t(getItemById(id).nameKey)).join(', ');
-            this.showToast(i18nService.t('world.exitNeedsItems', { items }));
+        if (def.blockedDialogue) {
+            // Transient run: the dialogue plays but the trigger's flag is NOT recorded.
+            eventBus.emit('activity:start', {
+                stageId: this.stage.id,
+                trigger: { ...def, activity: { type: 'dialogue', ...def.blockedDialogue } },
+                transient: true
+            });
+            return;
+        }
+        this.showBlockedToast(missing.items);
+    }
+
+    /** The gate rule (§3.9): an exit opens iff every condition it lists is met. */
+    private tryExit(def: ExitDef): void {
+        const missing = this.missingRequirements(def);
+        if (missing.triggers.length > 0 || missing.items.length > 0) {
+            this.showBlockedToast(missing.items);
             return;
         }
         eventBus.emit('stage:advance', { stageId: this.stage.id, to: def.to });
+    }
+
+    /** Missing items are named; missing triggers only get the generic "still things to do". */
+    private showBlockedToast(missingItems: ItemId[]): void {
+        if (missingItems.length > 0) {
+            const items = missingItems
+                .map((id) => i18nService.t(getItemById(id).nameKey))
+                .join(', ');
+            this.showToast(i18nService.t('world.needsItems', { items }));
+        } else {
+            this.showToast(i18nService.t('world.tasksIncomplete'));
+        }
     }
 
     /** FlowDirector already recorded the flag (emit is synchronous): show what was

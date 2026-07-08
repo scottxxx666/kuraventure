@@ -94,6 +94,11 @@ export class SubtitleEngine {
         });
     }
 
+    /** The cue currently on screen — DialogueScene reads its `speaker` to sync the portrait. */
+    getActiveCue(): SubtitleCue | null {
+        return this.playback?.activeCue ?? null;
+    }
+
     /** Polls the clock; the hosting scene calls this every update tick. */
     update(): void {
         const playback = this.playback;

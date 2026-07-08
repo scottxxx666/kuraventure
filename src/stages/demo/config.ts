@@ -1,8 +1,15 @@
 import type { StageDef } from '../../config/stages';
 import { SceneKeys } from '../../scenes/keys';
 
+/** Both dialogues share the same speakers, so one portrait map serves both. */
+const GUIDE_PORTRAITS = {
+    guide: 'assets/images/demo/npc-guide.png',
+    player: 'assets/images/demo/player.png'
+};
+
 /** Placeholder spine head: completing it unlocks demo-2 (next) and demo-branch (unlockedBy).
-    Exercises the gated-exit flow: the door needs the stage complete + the demo key. */
+    Exercises the full gating flow: recruit the guide NPC (who asks for the finished
+    training + the demo key) and the exit door opens. */
 export const demoStage: StageDef = {
     id: 'demo',
     titleKey: 'stage.demo.title',
@@ -40,15 +47,28 @@ export const demoStage: StageDef = {
             once: false
         },
         {
-            // Sceneless pickup (§3.2): grants the key the exit door requires.
+            // Sceneless pickup (§3.2): grants the key the guide NPC asks for.
             id: 'key-pickup',
             at: { objectName: 'pickup-key' },
             activity: { type: 'pickup' },
             grantsItems: ['demo-key'],
             required: false,
             once: true
+        },
+        {
+            // The recruit-the-guide quest (§3.9): while blocked the NPC asks for the
+            // training + the key; once met, the join dialogue plays and the trigger's
+            // flag opens the exit. `once` — the guide leaves the map when they join.
+            id: 'npc-join',
+            at: { objectName: 'npc-guide' },
+            activity: { type: 'dialogue', trackId: 'npc-guide-join', portraits: GUIDE_PORTRAITS },
+            requiredTriggers: ['template-minigame'],
+            requiredItems: ['demo-key'],
+            blockedDialogue: { trackId: 'npc-guide-ask', portraits: GUIDE_PORTRAITS },
+            required: true,
+            once: true
         }
     ],
-    exits: [{ at: { objectName: 'exit-door' }, requiredItems: ['demo-key'] }],
+    exits: [{ at: { objectName: 'exit-door' }, requiredTriggers: ['npc-join'] }],
     next: 'demo-2'
 };

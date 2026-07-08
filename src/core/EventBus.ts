@@ -7,8 +7,10 @@ import type { Locale } from '../services/I18nService';
  * Pure TS — no Phaser imports — so FlowDirector stays unit-testable.
  */
 export interface GameEvents {
-    /** A WorldScene trigger fired; FlowDirector pauses the world and launches the activity. */
-    'activity:start': { stageId: string; trigger: TriggerDef };
+    /** A WorldScene trigger fired; FlowDirector pauses the world and launches the activity.
+        `transient` runs the activity WITHOUT recording its flag on completion — used for
+        a blocked trigger's `blockedDialogue` (§3.9). */
+    'activity:start': { stageId: string; trigger: TriggerDef; transient?: boolean };
     /** The running activity finished; FlowDirector records the flag and resumes the world. */
     'activity:complete': { flagId: string; result?: unknown };
     /** The player quit the activity; FlowDirector resumes the world WITHOUT recording the flag. */

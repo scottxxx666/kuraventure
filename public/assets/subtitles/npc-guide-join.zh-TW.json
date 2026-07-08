@@ -1,0 +1,6 @@
+{
+    "cues": [
+        { "start": 0, "end": 2800, "speaker": "player", "text": "我完成訓練了，鑰匙也帶來了。" },
+        { "start": 3200, "end": 6400, "speaker": "guide", "text": "太好了！我加入你的隊伍，前面的門開了！" }
+    ]
+}

@@ -9,6 +9,7 @@ import { i18nService } from './services/I18nService';
 import { initOverlayScale } from './ui/domOverlay';
 import { applyLocaleFont } from './ui/fonts';
 import { BootScene } from './scenes/BootScene';
+import { DialogueScene } from './scenes/DialogueScene';
 import { MainMenuScene } from './scenes/MainMenuScene';
 import { TemplateMiniGame } from './scenes/minigames/_template/TemplateMiniGame';
 import { PizzaRunMiniGame } from './scenes/minigames/pizza-run/PizzaRunMiniGame';
@@ -27,6 +28,7 @@ const game = new Phaser.Game({
         StageSelectScene,
         WorldScene,
         VideoScene,
+        DialogueScene,
         TemplateMiniGame,
         PizzaRunMiniGame
     ]

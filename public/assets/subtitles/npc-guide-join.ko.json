@@ -1,0 +1,6 @@
+{
+    "cues": [
+        { "start": 0, "end": 2800, "speaker": "player", "text": "훈련을 마쳤어요. 열쇠도 가져왔어요." },
+        { "start": 3200, "end": 6400, "speaker": "guide", "text": "훌륭해요! 함께 갈게요. 앞의 문이 열렸어요!" }
+    ]
+}

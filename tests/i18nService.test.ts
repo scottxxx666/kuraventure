@@ -59,12 +59,12 @@ describe('I18nService', () => {
 
     it('t() interpolates {name} placeholders from params', () => {
         const i18n = new I18nService(null, new EventBus());
-        expect(i18n.t('world.exitNeedsItems', { items: 'Demo Key' })).toBe('You need: Demo Key');
+        expect(i18n.t('world.needsItems', { items: 'Demo Key' })).toBe('You need: Demo Key');
     });
 
     it('t() leaves unknown placeholders untouched and ignores extra params', () => {
         const i18n = new I18nService(null, new EventBus());
-        expect(i18n.t('world.exitNeedsItems', { other: 'x' })).toBe(en['world.exitNeedsItems']);
+        expect(i18n.t('world.needsItems', { other: 'x' })).toBe(en['world.needsItems']);
         expect(i18n.t('menu.title', { items: 'x' })).toBe(en['menu.title']);
     });
 
@@ -72,7 +72,7 @@ describe('I18nService', () => {
         const i18n = new I18nService(null, new EventBus());
         for (const locale of LOCALES) {
             i18n.setLocale(locale);
-            const text = i18n.t('world.exitNeedsItems', { items: 'XYZ' });
+            const text = i18n.t('world.needsItems', { items: 'XYZ' });
             expect(text).toContain('XYZ');
             expect(text).not.toContain('{items}');
         }

@@ -6,6 +6,7 @@ export const SceneKeys = {
     StageSelect: 'StageSelect',
     World: 'World',
     Video: 'Video',
+    Dialogue: 'Dialogue',
     TemplateMiniGame: 'TemplateMiniGame',
     PizzaRun: 'PizzaRun'
 } as const;

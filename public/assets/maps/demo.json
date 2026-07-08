@@ -10,7 +10,7 @@
   "tilewidth": 16,
   "tileheight": 16,
   "nextlayerid": 4,
-  "nextobjectid": 7,
+  "nextobjectid": 8,
   "tilesets": [
     {
       "firstgid": 1,
@@ -1326,6 +1326,17 @@
           "type": "",
           "x": 320,
           "y": 256,
+          "width": 16,
+          "height": 16,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 7,
+          "name": "npc-guide",
+          "type": "",
+          "x": 272,
+          "y": 96,
           "width": 16,
           "height": 16,
           "rotation": 0,

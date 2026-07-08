@@ -28,7 +28,7 @@ class FakeRenderer implements SubtitleRenderer {
 
 const EN_TRACK: SubtitleTrack = {
     cues: [
-        { start: 1000, end: 2000, text: 'first' },
+        { start: 1000, end: 2000, text: 'first', speaker: 'guide' },
         { start: 3000, end: 4000, text: 'second' }
     ]
 };
@@ -108,6 +108,23 @@ describe('SubtitleEngine cue selection', () => {
         clock.now = 2000;
         engine.update();
         expect(renderer.current).toBeNull();
+    });
+
+    it('getActiveCue exposes the on-screen cue (and its speaker) or null', async () => {
+        const { engine } = makeEngine();
+        const clock = new FakeClock();
+        await startPlaying(engine, clock);
+        expect(engine.getActiveCue()).toBeNull();
+        clock.now = 1500;
+        engine.update();
+        expect(engine.getActiveCue()?.speaker).toBe('guide');
+        clock.now = 3500;
+        engine.update();
+        expect(engine.getActiveCue()?.text).toBe('second');
+        expect(engine.getActiveCue()?.speaker).toBeUndefined();
+        clock.now = 4000;
+        engine.update(); // playback finished
+        expect(engine.getActiveCue()).toBeNull();
     });
 
     it('is hidden in the gap between cues, then shows the next cue', async () => {

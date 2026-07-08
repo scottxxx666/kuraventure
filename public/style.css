@@ -135,6 +135,18 @@ html:lang(ja) #ui-overlay {
     padding: calc(var(--px) * 2px) calc(var(--px) * 4px);
 }
 
+/* Speaker portrait during in-world dialogue (DialogueScene, PLAN.md §3.6):
+   sits above the subtitle bar, pixel-crisp at integer scales. */
+.dialogue-portrait {
+    position: absolute;
+    bottom: calc(var(--px) * 36px);
+    left: calc(var(--px) * 24px);
+    width: calc(var(--px) * 32px);
+    height: calc(var(--px) * 32px);
+    image-rendering: pixelated;
+    background: rgba(0, 0, 0, 0.6);
+}
+
 /* Pizza Run fail banner (src/scenes/minigames/pizza-run/). */
 .pizza-run-failed {
     color: #ff5a5a;

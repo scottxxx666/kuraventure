@@ -9,10 +9,19 @@ import { demoBranchStage } from '../stages/demo-branch/config';
  * Pure TS — no Phaser imports — so the registry is unit-testable.
  */
 
+/** In-world timed dialogue (§3.6): a subtitle track plus optional per-speaker
+    portraits (cue.speaker → image URL under public/assets/images/...). */
+export interface DialogueSpec {
+    trackId: string;
+    portraits?: Record<string, string>;
+}
+
 export type ActivityRef =
     | { type: 'minigame'; sceneKey: string }
     /** Sceneless map pickup: FlowDirector records the flag without pausing the world. */
     | { type: 'pickup' }
+    /** Played by the generic DialogueScene over the paused world (§3.6). */
+    | ({ type: 'dialogue' } & DialogueSpec)
     | {
           type: 'video';
           videoKey: string;
@@ -27,6 +36,14 @@ export interface TriggerDef {
     /** Named object in the stage's Tiled map (zone or NPC spawn). */
     at: { objectName: string };
     activity: ActivityRef;
+    /** Trigger IDs of THIS stage that must be complete before this trigger fires. */
+    requiredTriggers?: string[];
+    /** Items the player must hold before this trigger fires. */
+    requiredItems?: ItemId[];
+    /** Played instead when the requirements above aren't met (the flag is NOT
+        recorded — e.g. the NPC asking for the things it needs). Without it,
+        a blocked trigger just shows a toast naming what's missing. */
+    blockedDialogue?: DialogueSpec;
     /** Items granted when this trigger completes (never on abort). */
     grantsItems?: ItemId[];
     /** Counts toward stage completion. */
@@ -35,14 +52,16 @@ export interface TriggerDef {
     once: boolean;
 }
 
-/** In-map gated door (§3.9): opens when the stage's required triggers are all
-    complete AND `requiredItems` are held; walking in advances the flow. */
+/** In-map gated door (§3.9): opens iff every condition it LISTS is met — an
+    exit listing nothing is always open; walking in advances the flow. */
 export interface ExitDef {
     /** Named object in the stage's Tiled map. */
     at: { objectName: string };
     /** Destination stage; omitted = this stage's `next` (none → stage select). */
     to?: string;
-    /** Items the player must hold, on top of the stage being complete. */
+    /** Trigger IDs of THIS stage that must be complete. */
+    requiredTriggers?: string[];
+    /** Items the player must hold. */
     requiredItems?: ItemId[];
 }
 

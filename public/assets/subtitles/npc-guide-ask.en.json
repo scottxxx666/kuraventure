@@ -1,0 +1,7 @@
+{
+    "cues": [
+        { "start": 0, "end": 2600, "speaker": "guide", "text": "Ah, a traveler! The door ahead won't open for strangers." },
+        { "start": 3000, "end": 6200, "speaker": "guide", "text": "Finish the training and bring me the Demo Key — then I'll join you." },
+        { "start": 6600, "end": 8000, "speaker": "player", "text": "On it!" }
+    ]
+}

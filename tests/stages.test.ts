@@ -30,6 +30,25 @@ describe('stage registry', () => {
         }
     });
 
+    it('every requiredTriggers reference points at another trigger in the same stage', () => {
+        for (const stage of STAGES) {
+            const ids = new Set(stage.triggers.map((t) => t.id));
+            for (const trigger of stage.triggers) {
+                for (const dep of trigger.requiredTriggers ?? []) {
+                    expect(
+                        ids.has(dep) && dep !== trigger.id,
+                        `${stage.id}/${trigger.id} requires ${dep}`
+                    ).toBe(true);
+                }
+            }
+            for (const exit of stage.exits ?? []) {
+                for (const dep of exit.requiredTriggers ?? []) {
+                    expect(ids.has(dep), `${stage.id} exit requires ${dep}`).toBe(true);
+                }
+            }
+        }
+    });
+
     it('every exit destination points at a registered stage', () => {
         const ids = new Set(STAGES.map((s) => s.id));
         for (const stage of STAGES) {

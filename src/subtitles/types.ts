@@ -8,6 +8,8 @@ export interface SubtitleCue {
     start: number;
     end: number;
     text: string;
+    /** Who says the line — keys DialogueScene's portrait map (§3.6). Videos ignore it. */
+    speaker?: string;
 }
 
 export interface SubtitleTrack {

@@ -1,0 +1,7 @@
+{
+    "cues": [
+        { "start": 0, "end": 2600, "speaker": "guide", "text": "오, 여행자님! 앞의 문은 낯선 사람에게는 열리지 않아요." },
+        { "start": 3000, "end": 6200, "speaker": "guide", "text": "훈련을 마치고 데모 열쇠를 가져오세요. 그러면 함께 갈게요." },
+        { "start": 6600, "end": 8000, "speaker": "player", "text": "맡겨 주세요!" }
+    ]
+}

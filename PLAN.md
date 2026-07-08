@@ -18,9 +18,14 @@
   stage unlocking are *derived* from the flags. A refresh loses mid-map position,
   never progress; any unlocked stage can be entered or replayed from stage select.
 - **Items** are permanent booleans (never consumed, no quantities), granted by
-  triggers (map pickups, mini-game rewards, NPC/cutscene gifts) and required by
-  **gated in-map exits**: a stage's exit door opens only when the stage is
-  complete AND the exit's required items are held (§3.2, §3.4, §3.9).
+  triggers (map pickups, mini-game rewards, NPC/cutscene gifts) (§3.2, §3.4).
+- **Gating** (§3.9): triggers and in-map exit doors can require same-stage
+  trigger flags ("minor state") and/or items. An exit opens iff every condition
+  it *lists* is met — listing nothing means always open; stage completion is a
+  separate concept used only for stage-select unlocking. A blocked trigger can
+  play a dialogue instead (the NPC asking for what it needs).
+- **In-world dialogue** (§3.6): a `dialogue` activity plays a subtitle track over
+  the paused world with per-speaker portrait images.
 - **Full UI + subtitle i18n**: `en`, `zh-TW`, `ja`, `ko`. Every visible string goes
   through i18n; subtitles render over videos too.
 - **Desktop AND mobile browsers.** One virtual-gamepad input model everywhere:
@@ -97,6 +102,7 @@ src/
     StageSelectScene.ts      # lists UNLOCKED stages, enter/replay any of them
     WorldScene.ts            # THE reusable map scene (§3.9); one instance serves all stages
     VideoScene.ts            # THE generic cutscene player (§3.6)
+    DialogueScene.ts         # THE generic in-world dialogue player (§3.6)
     minigames/               # SHARED pool — any stage's trigger can reference any mini-game
       MiniGameScene.ts       # abstract base class — THE mini-game contract (§3.3)
       _template/
@@ -150,10 +156,16 @@ Placement rules (so nothing lands in the wrong place):
 Types (in `src/config/stages.ts`; each stage's data lives in `src/stages/<id>/config.ts`):
 
 ```ts
+export interface DialogueSpec {  // in-world timed dialogue (§3.6)
+  trackId: string;               // subtitle track (§3.5), all four locales
+  portraits?: Record<string, string>; // cue.speaker → image URL (public/assets/images/...)
+}
+
 export type ActivityRef =
   | { type: 'minigame'; sceneKey: string }        // scene key of a MiniGameScene subclass
   | { type: 'pickup' }                             // sceneless map pickup: FlowDirector records
                                                    // the flag immediately, world keeps running
+  | ({ type: 'dialogue' } & DialogueSpec)          // played by DialogueScene over the paused world
   | {
       type: 'video';
       videoKey: string;                            // key for the lazy loader
@@ -166,16 +178,22 @@ export interface TriggerDef {
   id: string;                    // unique WITHIN the stage; flag is `${stageId}/${id}`
   at: { objectName: string };    // named object in the Tiled map (zone or NPC spawn)
   activity: ActivityRef;
+  requiredTriggers?: string[];   // same-stage trigger IDs that must be complete first
+  requiredItems?: ItemId[];      // items the player must hold first
+  blockedDialogue?: DialogueSpec;// played instead while requirements are unmet (flag NOT
+                                 // recorded); without it a blocked trigger shows a toast
   grantsItems?: ItemId[];        // items granted when this trigger completes (never on abort)
   required: boolean;             // counts toward stage completion
   once: boolean;                 // if true, consumed (hidden) once completed
 }
 
-export interface ExitDef {       // in-map gated door (§3.9)
+export interface ExitDef {       // in-map gated door (§3.9): opens iff every condition
+                                 // it LISTS is met; listing nothing = always open
   at: { objectName: string };    // named object in the Tiled map
   to?: string;                   // destination stage; omitted = this stage's `next`
                                  // (none → stage select); branch doors set `to`
-  requiredItems?: ItemId[];      // items the player must hold, on top of stage completion
+  requiredTriggers?: string[];   // same-stage trigger IDs that must be complete
+  requiredItems?: ItemId[];      // items the player must hold
 }
 
 export interface StageDef {
@@ -204,14 +222,15 @@ binds names to activities, so level layout stays entirely in the map editor.
 - `startStage(stageId)` — used by MainMenu (first unlocked stage) and StageSelectScene;
   starts `WorldScene` with the `StageDef` as scene data.
 - On `EventBus` event `activity:start` (from a WorldScene trigger) → pause `WorldScene`,
-  launch the activity scene (`VideoScene` with the `ActivityRef` as scene data, or the
-  mini-game's `sceneKey`). Exception: `type: 'pickup'` is sceneless — the flag is
-  recorded and `grantsItems` granted immediately, the world never pauses.
+  launch the activity scene (`VideoScene`/`DialogueScene` with the `ActivityRef` as
+  scene data, or the mini-game's `sceneKey`). Exception: `type: 'pickup'` is sceneless —
+  the flag is recorded and `grantsItems` granted immediately, the world never pauses.
 - On `activity:complete` → stop the activity scene, record the flag via
   `ProgressService.markCompleted(flagId)`, grant the trigger's `grantsItems`, resume
   `WorldScene`. If the stage is now complete → mark the stage complete (unlocks
   branches / the `next` stage) and prompt advance to `next` (or return to StageSelect
-  when there is no `next`).
+  when there is no `next`). Exception: a `transient` run (a blocked trigger's
+  `blockedDialogue`, §3.9) records nothing — stop + resume only.
 - On `stage:advance` → start the payload's `to` stage (set by branch exit doors),
   else the stage's `next`, else return to StageSelect.
 - On `activity:abort` (player quit the activity) → same as complete but the flag is
@@ -261,7 +280,7 @@ the same mini-game. `_template/TemplateMiniGame.ts` is the copy-me example.
   permanent booleans, granted by FlowDirector from `TriggerDef.grantsItems` on
   completion (never on abort; re-grants are no-ops), never consumed,
   `areRequiredTriggersComplete(stage)` — the stage-completion rule (every
-  `required: true` trigger flag set), shared by FlowDirector and exit gating (§3.9),
+  `required: true` trigger flag set) used by FlowDirector's completion marking,
   `getUnlockedStages(): StageDef[]` — derived from `STAGES` + completed flags
   (spine stages unlock as the `next` chain is completed; branch stages when their
   `unlockedBy` list is complete; unknown IDs are dropped so config changes can't
@@ -284,10 +303,11 @@ allowed and never erases flags.
 Data format — `public/assets/subtitles/<trackId>.<locale>.json`:
 
 ```json
-{ "cues": [ { "start": 1200, "end": 3400, "text": "Hello!" } ] }
+{ "cues": [ { "start": 1200, "end": 3400, "text": "Hello!", "speaker": "guide" } ] }
 ```
 (`start`/`end` in ms — start-inclusive, end-exclusive; one file per track per locale,
-**all four locales required**; loaded lazily and cached per session.)
+**all four locales required**; loaded lazily and cached per session. `speaker` is
+optional — DialogueScene keys its portrait map with it (§3.6); videos ignore it.)
 
 Core abstraction — the **clock source**:
 
@@ -323,6 +343,18 @@ FlowDirector for every `type: 'video'` activity, over the paused `WorldScene`):
   `activity:complete`.
 - On video `complete` event → `activity:complete`. The virtual pad hides while a
   video is active.
+
+`DialogueScene` (one generic scene, parameterized by a `dialogue` ActivityRef;
+launched by FlowDirector over the paused world, which keeps rendering underneath):
+- Plays `trackId` through the SubtitleEngine on a `GameClock` fed by its own update
+  deltas; emits `activity:complete` when the track ends (a failed track load also
+  completes — never soft-lock behind a paused world).
+- Shows the active cue's `speaker` portrait from the `portraits` map as a DOM
+  overlay `<img class="dialogue-portrait">` (§3.8, pixel-crisp via
+  `image-rendering: pixelated`); no portrait/speaker → hidden. The virtual pad
+  hides while dialogue is active.
+- Also used for a blocked trigger's `blockedDialogue` via a `transient`
+  `activity:start` — same playback, nothing recorded (§3.9).
 
 ### 3.7 i18n
 
@@ -379,16 +411,23 @@ One reusable `Phaser.Scene` serving every stage; never subclassed per stage.
   driven by `InputService.direction()` (§3.10); `A` interacts with triggers/NPCs.
 - For each `TriggerDef`, find its named object in the map and create an interaction
   zone/NPC. Skip triggers whose flag is already set when `once: true` (derived map
-  state — §3.4). Entering/interacting emits `activity:start` on the EventBus; the
-  FlowDirector handles pause/launch (WorldScene never launches activity scenes itself).
-  Pickup triggers get immediate feedback instead (toast naming the items, consumed
-  zone removed on the spot — the world never paused).
-- For each `ExitDef`, create a door zone the same way. Walking in when every
-  required trigger is complete AND the exit's `requiredItems` are held emits
-  `stage:advance` (with the exit's `to`); otherwise a transient toast says what's
-  missing (stage tasks vs. named items). Stages **with** exits never show the
-  press-A "stage complete" prompt — the door is the way out; stages without exits
-  keep the prompt.
+  state — §3.4). Entering/interacting checks the trigger's own requirements
+  (`requiredTriggers` — same-stage flags — and `requiredItems`): met → emit
+  `activity:start` on the EventBus; the FlowDirector handles pause/launch
+  (WorldScene never launches activity scenes itself). Unmet → play its
+  `blockedDialogue` as a `transient` run (nothing recorded — e.g. the NPC asking
+  for what it needs), or without one show a toast (named missing items, else a
+  generic "still something to do"). Pickup triggers get immediate feedback
+  (toast naming the items, consumed zone removed on the spot — the world never
+  paused).
+- For each `ExitDef`, create a door zone the same way. The gate rule: the exit
+  opens **iff every condition it lists is met** (`requiredTriggers` +
+  `requiredItems`; listing nothing = always open) — walking in emits
+  `stage:advance` (with the exit's `to`); blocked shows the same toast as
+  triggers. Stage completion is deliberately NOT part of the rule — it only
+  drives stage-select unlocking; list conditions explicitly on the exit.
+  Stages **with** exits never show the press-A "stage complete" prompt — the
+  door is the way out; stages without exits keep the prompt.
 - On resume after an activity, refresh trigger/map state from `ProgressService`
   (a just-completed `once` trigger disappears without reloading the map).
 - Escape hatch (designed, **not yet implemented** — add only when a stage first needs
