@@ -194,7 +194,8 @@ html:lang(ja) #ui-overlay {
 
 /* Mini-game fail banners (src/scenes/minigames/failFlow.ts). */
 .pizza-run-failed,
-.flappy-failed {
+.flappy-failed,
+.cart-carry-failed {
     color: #ff5a5a;
 }
 

@@ -10,7 +10,7 @@
   "tilewidth": 16,
   "tileheight": 16,
   "nextlayerid": 4,
-  "nextobjectid": 10,
+  "nextobjectid": 11,
   "tilesets": [
     {
       "firstgid": 1,
@@ -1369,6 +1369,17 @@
           "name": "trigger-flappy",
           "type": "",
           "x": 176,
+          "y": 240,
+          "width": 32,
+          "height": 32,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 10,
+          "name": "trigger-cart",
+          "type": "",
+          "x": 256,
           "y": 240,
           "width": 32,
           "height": 32,

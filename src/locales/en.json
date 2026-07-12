@@ -18,6 +18,10 @@
     "minigame.flappy.failed": "Failed!",
     "minigame.flappy.retry": "Retry",
     "minigame.flappy.quit": "Give up",
+    "minigame.cartCarry.prompt": "Stick moves the back carrier · A/B the front",
+    "minigame.cartCarry.failed": "Failed!",
+    "minigame.cartCarry.retry": "Retry",
+    "minigame.cartCarry.quit": "Give up",
     "stage.demo.title": "Demo Stage",
     "stage.demo-2.title": "Demo Stage 2",
     "stage.demo-branch.title": "Branch Stage"

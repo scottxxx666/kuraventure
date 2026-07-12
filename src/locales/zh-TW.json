@@ -18,6 +18,10 @@
     "minigame.flappy.failed": "失敗了！",
     "minigame.flappy.retry": "再試一次",
     "minigame.flappy.quit": "放棄",
+    "minigame.cartCarry.prompt": "搖桿控制後方・A/B 控制前方",
+    "minigame.cartCarry.failed": "失敗了！",
+    "minigame.cartCarry.retry": "再試一次",
+    "minigame.cartCarry.quit": "放棄",
     "stage.demo.title": "示範關卡",
     "stage.demo-2.title": "示範關卡 2",
     "stage.demo-branch.title": "分支關卡"
