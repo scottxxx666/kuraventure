@@ -55,7 +55,11 @@ export function runFailFlow(opts: FailFlowOptions): () => void {
     };
 
     const playFailVideo = (): void => {
-        const video = opts.scene.add.video(GAME_WIDTH / 2, GAME_HEIGHT / 2, opts.videoKey).setDepth(100);
+        // scrollFactor 0: scrolled-camera mini-games (cart-carry) fail mid-level.
+        const video = opts.scene.add
+            .video(GAME_WIDTH / 2, GAME_HEIGHT / 2, opts.videoKey)
+            .setDepth(100)
+            .setScrollFactor(0);
         const fit = (): void => {
             if (video.width > 0 && video.height > 0) {
                 const scale = Math.min(GAME_WIDTH / video.width, GAME_HEIGHT / video.height);

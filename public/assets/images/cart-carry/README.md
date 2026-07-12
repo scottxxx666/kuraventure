@@ -11,7 +11,7 @@ author at exactly these sizes, no upscaling):
 | file | logical size | notes |
 |---|---|---|
 | `carrier.png` | 20×20 | drawn twice (back + front carrier); hitbox is 70% of the sprite |
-| `cart.png` | 112×8 | author horizontal; rotated/stretched between the carriers at runtime |
+| `cart.png` | 112×8 | author horizontal; rotated + stretched (88–136 px, loose grip) between the carriers at runtime |
 | `spike.png` | 16×64 | floor stalagmite; stretched to 40–104 px tall, `setFlipY` for the ceiling variant |
 | `pipe.png` | 16×20 | piranha warp pipe, sits on the floor |
 | `plant.png` | 12×36 | piranha plant; only the top 8 px show during the warning peek |

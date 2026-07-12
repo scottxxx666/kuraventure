@@ -18,7 +18,7 @@
     "minigame.flappy.failed": "실패!",
     "minigame.flappy.retry": "다시 도전",
     "minigame.flappy.quit": "포기",
-    "minigame.cartCarry.prompt": "스틱은 뒤쪽 · A/B는 앞쪽 조작",
+    "minigame.cartCarry.prompt": "왼쪽 스틱/WASD는 뒤쪽 · 오른쪽 스틱/방향키는 앞쪽 조작",
     "minigame.cartCarry.failed": "실패!",
     "minigame.cartCarry.retry": "다시 도전",
     "minigame.cartCarry.quit": "포기",

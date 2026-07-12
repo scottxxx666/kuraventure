@@ -457,6 +457,7 @@ One reusable `Phaser.Scene` serving every stage; never subclassed per stage.
 ```ts
 export interface GameInput {
   direction(): { x: number; y: number };   // normalized, from keys or joystick
+  direction2(): { x: number; y: number };  // second stick — twin-stick mode only
   isDown(button: 'A' | 'B'): boolean;
   onPress(button: 'A' | 'B', cb: () => void): () => void; // returns unsubscribe
 }
@@ -473,6 +474,14 @@ export interface GameInput {
 - Design constraints that follow: mini-games must be D-pad + 1–2 buttons playable;
   avoid pixel-precise or twitch-heavy challenges (virtual sticks are imprecise); keep
   critical visuals out of the bottom screen corners (thumbs sit there).
+- **Twin-stick mode** (user-signed-off exception to "D-pad + 1–2 buttons"; currently
+  used only by the cart-carry mini-game): `inputService.setTwinStick(true)` +
+  `setVirtualPadTwinStick(true)` split input into two direction channels — keyboard
+  WASD → `direction()`, arrows → `direction2()`; the virtual pad swaps its A/B buttons
+  for a second joystick bottom-right. Toggling clears direction state (a key held
+  across the toggle is dead until re-pressed). The enabling scene must switch the mode
+  OFF on SHUTDOWN **and before `runFailFlow`** — the fail-video skip is an A-press, so
+  touch players need their buttons back.
 - **Landscape only** (confirmed): `ui/rotateOverlay.ts` covers the screen with a
   localized "rotate your device" prompt while a touch device is portrait (pure CSS
   media query toggles it). The start-game gesture also enters browser fullscreen and,

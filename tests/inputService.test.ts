@@ -52,6 +52,61 @@ describe('InputService direction merging', () => {
     });
 });
 
+describe('InputService second channel (twin-stick)', () => {
+    it('direction2 defaults to zero and ignores channel-1 reports', () => {
+        const input = new InputService();
+        expect(input.direction2()).toEqual({ x: 0, y: 0 });
+        input.setDirection('keyboard', 1, 0);
+        expect(input.direction2()).toEqual({ x: 0, y: 0 });
+    });
+
+    it('channels are independent in both directions', () => {
+        const input = new InputService();
+        input.setDirection('keyboard', 1, 0);
+        input.setDirection2('keyboard', 0, -1);
+        expect(input.direction()).toEqual({ x: 1, y: 0 });
+        expect(input.direction2()).toEqual({ x: 0, y: -1 });
+    });
+
+    it('applies most-recent-source semantics per channel', () => {
+        const input = new InputService();
+        input.setDirection2('keyboard', 1, 0);
+        input.setDirection2('virtualpad', 0, 1);
+        expect(input.direction2()).toEqual({ x: 0, y: 1 });
+        input.setDirection2('virtualpad', 0, 0);
+        expect(input.direction2()).toEqual({ x: 0, y: 0 });
+    });
+
+    it('normalizes channel-2 vectors longer than 1', () => {
+        const input = new InputService();
+        input.setDirection2('keyboard', 1, 1);
+        expect(input.direction2().x).toBeCloseTo(Math.SQRT1_2);
+        expect(input.direction2().y).toBeCloseTo(Math.SQRT1_2);
+    });
+
+    it('setTwinStick toggles the flag and clears both channels', () => {
+        const input = new InputService();
+        expect(input.isTwinStick()).toBe(false);
+        input.setDirection('keyboard', 1, 0);
+        input.setDirection2('keyboard', 0, 1);
+        input.setTwinStick(true);
+        expect(input.isTwinStick()).toBe(true);
+        expect(input.direction()).toEqual({ x: 0, y: 0 });
+        expect(input.direction2()).toEqual({ x: 0, y: 0 });
+        input.setDirection('keyboard', -1, 0);
+        input.setTwinStick(false);
+        expect(input.isTwinStick()).toBe(false);
+        expect(input.direction()).toEqual({ x: 0, y: 0 });
+    });
+
+    it('the toggle leaves button state untouched', () => {
+        const input = new InputService();
+        input.setButtonDown('keyboard', 'A', true);
+        input.setTwinStick(true);
+        expect(input.isDown('A')).toBe(true);
+    });
+});
+
 describe('InputService buttons', () => {
     it('isDown reflects any source holding the button', () => {
         const input = new InputService();

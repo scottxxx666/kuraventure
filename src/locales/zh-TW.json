@@ -18,7 +18,7 @@
     "minigame.flappy.failed": "失敗了！",
     "minigame.flappy.retry": "再試一次",
     "minigame.flappy.quit": "放棄",
-    "minigame.cartCarry.prompt": "搖桿控制後方・A/B 控制前方",
+    "minigame.cartCarry.prompt": "左搖桿/WASD 控制後方・右搖桿/方向鍵控制前方",
     "minigame.cartCarry.failed": "失敗了！",
     "minigame.cartCarry.retry": "再試一次",
     "minigame.cartCarry.quit": "放棄",

@@ -18,7 +18,7 @@
     "minigame.flappy.failed": "Failed!",
     "minigame.flappy.retry": "Retry",
     "minigame.flappy.quit": "Give up",
-    "minigame.cartCarry.prompt": "Stick moves the back carrier · A/B the front",
+    "minigame.cartCarry.prompt": "Left stick/WASD moves the back carrier · right stick/arrows the front",
     "minigame.cartCarry.failed": "Failed!",
     "minigame.cartCarry.retry": "Retry",
     "minigame.cartCarry.quit": "Give up",

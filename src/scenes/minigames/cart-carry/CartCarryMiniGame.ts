@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../../config/dimensions';
 import { inputService } from '../../../input/InputService';
+import type { Vec2 } from '../../../input/InputService';
+import { setVirtualPadTwinStick } from '../../../input/VirtualPadSource';
 import { i18nService } from '../../../services/I18nService';
 import { createOverlayElement } from '../../../ui/domOverlay';
 import { runFailFlow } from '../failFlow';
@@ -9,45 +11,53 @@ import { MiniGameScene } from '../MiniGameScene';
 import { difficultyFor } from './difficulty';
 import type { Difficulty } from './difficulty';
 import {
-    BACK_X,
+    BACK_START,
     CARRIER_MAX_Y,
     CARRIER_MIN_Y,
+    CARRIER_SIZE,
     CARRIER_SPEED,
-    CART_SPAN,
     CEILING_Y,
+    CORRIDOR_H,
     FLOOR_Y,
-    FRONT_X,
-    MAX_SEPARATION,
-    TILT_BASE
+    FRONT_START,
+    GOAL_X,
+    LEVEL_W,
+    MAX_CHANNEL_SHIFT,
+    MAX_DIST,
+    MIN_DIST,
+    OBSTACLE_END_X,
+    OBSTACLE_START_X,
+    SLALOM_OFFSET_PX,
+    constrainSpan
 } from './geometry';
 
 /**
  * Cart Carry — single-player take on Mario Party's co-op "Miner Setbacks":
- * two carriers haul a cart through an auto-scrolling cave, one per hand.
- * The stick moves the BACK carrier up/down, held A/B moves the FRONT one
- * up/down; the cart tilts between them (separation capped — it's rigid).
- * Obstacles scroll right→left: floor/ceiling spikes, tilt pairs offset by
- * exactly the cart span (forcing a tilted pass), and piranha pipes whose
- * plant is deadly only while extended (a tinted peek telegraphs it).
- * One hit fails: banner → ending video → Retry / Give up (../failFlow.ts).
- * Survive the timer to win; density/speed ramp in ./difficulty.ts behind
- * the one HARDNESS knob. Current art is placeholder photos — replacement
- * sizes in public/assets/images/cart-carry/README.md.
+ * two carriers haul a cart through a static cave, one hand each. Twin-stick
+ * (PLAN.md §3.10 signed-off exception): WASD / left virtual stick moves the
+ * BACK carrier, arrows / right virtual stick the FRONT one, both free in 4
+ * directions at their own pace. The cart spans between them with a loose
+ * grip (distance clamped to [MIN_DIST, MAX_DIST], rotation free). The level
+ * is generated at create() from ./difficulty.ts (one HARDNESS knob): floor/
+ * ceiling spikes, slalom pairs, pinch gates and piranha pipes whose plant is
+ * deadly only while extended (a tinted peek telegraphs it). One hit fails:
+ * banner → ending video → Retry / Give up (../failFlow.ts). Reach the goal
+ * line to win — no timer; the bar shows distance. Current art is placeholder
+ * photos — replacement sizes in public/assets/images/cart-carry/README.md.
  */
 
-const SURVIVE_MS = 30_000; // survive this long to win
 const WIN_BEAT_MS = 300; // pause on the full bar before completing
 
-const CARRIER_SIZE = 20;
 const CARRIER_HITBOX = 0.7; // body shrunk vs the visible sprite (touch fairness)
 const CART_THICKNESS = 8;
 const SENSOR_W = 16; // cart hit sensors sampled along the segment
 const SENSOR_H = 8;
-const START_Y = 90; // both carriers' pre-run height
+const CARRIER_MIN_X = 12;
+const CARRIER_MAX_X = LEVEL_W - 12;
 
 const SPIKE_W = 16;
 const SPIKE_HITBOX = 0.85;
-const SPIKE_JITTER = 8; // ± px shifted between a tilt pair's two heights
+const GATE_EDGE_MARGIN = 4; // min spike height a gate keeps on each side
 const PIPE_W = 16;
 const PIPE_H = 20;
 const PLANT_W = 12;
@@ -55,10 +65,8 @@ const PLANT_H = 36;
 const PLANT_PEEK_H = 8; // visible height during the warning phase
 const PLANT_WARN_TINT = 0xffe066;
 
-const TILT_EXTRA_MS = 1200; // breather after a tilt pair before the next section
 const INPUT_DEADZONE = 0.3;
-const SPAWN_X = GAME_WIDTH + 8;
-const CULL_MARGIN = 120; // obstacles die this far off-screen
+const PROGRESS_START_X = (BACK_START.x + FRONT_START.x) / 2;
 
 const BAR_W = 120;
 const BAR_H = 5;
@@ -72,11 +80,9 @@ const TEX_PLANT = 'cart-carry-plant';
 const ENDING_VIDEO_KEY = 'cart-carry-ending';
 
 // Per-sprite data keys. Obstacles are deadly unless DEADLY is false — a
-// piranha plant toggles it with its cycle phase (the plant's body stays
-// enabled so it keeps scrolling with its pipe).
+// piranha plant toggles it with its cycle phase (its static body stays at
+// the extended position; only visuals change per phase).
 const DEADLY = 'deadly';
-const IS_PLANT = 'isPlant';
-const SPAWN_T = 'spawnT';
 const PHASE_OFFSET = 'phaseOffset';
 const HIDDEN_MS = 'hiddenMs';
 const WARN_MS = 'warnMs';
@@ -91,14 +97,13 @@ export class CartCarryMiniGame extends MiniGameScene {
     private front!: Phaser.Physics.Arcade.Sprite;
     private cart!: Phaser.GameObjects.Image;
     private sensors: Phaser.Physics.Arcade.Sprite[] = [];
-    private obstacles!: Phaser.Physics.Arcade.Group;
+    private obstacles!: Phaser.Physics.Arcade.StaticGroup;
+    private plants: Phaser.Physics.Arcade.Sprite[] = [];
+    private followTarget!: Phaser.GameObjects.Rectangle;
     private barFill!: Phaser.GameObjects.Rectangle;
     private state: CartCarryState = 'ready';
-    private elapsedMs = 0;
-    private sectionTimer: Phaser.Time.TimerEvent | null = null;
-    private pendingExtraMs = 0;
-    private aWasDown = true; // assume held at launch so a carried-over press can't start the run
-    private bWasDown = true;
+    private createdAt = 0;
+    private channelCenter = GAME_HEIGHT / 2; // level-gen solvability tracking
     private promptEl: HTMLElement | null = null;
     private failFlowCleanup: (() => void) | null = null;
 
@@ -122,45 +127,55 @@ export class CartCarryMiniGame extends MiniGameScene {
     create(): void {
         // The same scene instance is reused across launches and restarts.
         this.state = 'ready';
-        this.elapsedMs = 0;
-        this.sectionTimer = null;
-        this.pendingExtraMs = 0;
-        this.aWasDown = true;
-        this.bWasDown = true;
         this.failFlowCleanup = null;
         this.sensors = [];
+        this.plants = [];
+        this.channelCenter = GAME_HEIGHT / 2;
+        this.createdAt = this.time.now;
 
+        inputService.setTwinStick(true);
+        setVirtualPadTwinStick(true);
+
+        this.physics.world.setBounds(0, 0, LEVEL_W, GAME_HEIGHT);
+        this.cameras.main.setBounds(0, 0, LEVEL_W, GAME_HEIGHT);
         this.cameras.main.setBackgroundColor('#241a12');
-        this.add.rectangle(GAME_WIDTH / 2, CEILING_Y / 2, GAME_WIDTH, CEILING_Y, 0x4a3626);
-        this.add.rectangle(GAME_WIDTH / 2, (FLOOR_Y + GAME_HEIGHT) / 2, GAME_WIDTH, GAME_HEIGHT - FLOOR_Y, 0x4a3626);
+        this.add.rectangle(LEVEL_W / 2, CEILING_Y / 2, LEVEL_W, CEILING_Y, 0x4a3626);
+        this.add.rectangle(LEVEL_W / 2, (FLOOR_Y + GAME_HEIGHT) / 2, LEVEL_W, GAME_HEIGHT - FLOOR_Y, 0x4a3626);
+        this.add.rectangle(GOAL_X, GAME_HEIGHT / 2, 6, CORRIDOR_H, 0x8fd18f, 0.5);
 
-        this.cart = this.add.image((BACK_X + FRONT_X) / 2, START_Y, TEX_CART);
+        this.cart = this.add.image(PROGRESS_START_X, BACK_START.y, TEX_CART);
+        this.back = this.createCarrier(BACK_START);
+        this.front = this.createCarrier(FRONT_START);
 
-        this.back = this.createCarrier(BACK_X);
-        this.front = this.createCarrier(FRONT_X);
-
-        this.obstacles = this.physics.add.group();
+        this.obstacles = this.physics.add.staticGroup();
 
         for (let i = 1; i <= 3; i++) {
-            const sensor = this.physics.add.sprite(0, START_Y, TEX_CART);
+            const sensor = this.physics.add.sprite(PROGRESS_START_X, BACK_START.y, TEX_CART);
             sensor.setDisplaySize(SENSOR_W, SENSOR_H).setVisible(false);
             this.sensors.push(sensor);
         }
         for (const target of [this.back, this.front, ...this.sensors]) {
             this.physics.add.overlap(target, this.obstacles, (_t, obstacle) =>
-                this.onObstacleTouch(obstacle as Phaser.Physics.Arcade.Sprite)
+                this.onObstacleTouch(obstacle as Phaser.GameObjects.GameObject)
             );
         }
+
+        this.generateLevel();
         this.layoutCart();
 
-        // Survival-timer bar (game-scene UI, no text → Phaser, not DOM — §3.8).
+        this.followTarget = this.add.rectangle(PROGRESS_START_X, GAME_HEIGHT / 2, 1, 1).setVisible(false);
+        this.cameras.main.startFollow(this.followTarget, true, 0.15, 0.15);
+
+        // Distance bar (game-scene UI, no text → Phaser, not DOM — §3.8).
         this.add
             .rectangle(GAME_WIDTH / 2, BAR_Y, BAR_W + 2, BAR_H + 2)
-            .setStrokeStyle(1, 0xffffff);
+            .setStrokeStyle(1, 0xffffff)
+            .setScrollFactor(0);
         this.barFill = this.add
             .rectangle(GAME_WIDTH / 2 - BAR_W / 2, BAR_Y, BAR_W, BAR_H, 0x8fd18f)
             .setOrigin(0, 0.5)
-            .setScale(0, 1);
+            .setScale(0, 1)
+            .setScrollFactor(0);
 
         this.promptEl = createOverlayElement('hud-prompt');
         this.promptEl.textContent = i18nService.t('minigame.cartCarry.prompt');
@@ -168,11 +183,13 @@ export class CartCarryMiniGame extends MiniGameScene {
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
             this.promptEl?.remove();
             this.failFlowCleanup?.();
+            inputService.setTwinStick(false);
+            setVirtualPadTwinStick(false);
         });
     }
 
-    private createCarrier(x: number): Phaser.Physics.Arcade.Sprite {
-        const carrier = this.physics.add.sprite(x, START_Y, TEX_CARRIER);
+    private createCarrier(at: Vec2): Phaser.Physics.Arcade.Sprite {
+        const carrier = this.physics.add.sprite(at.x, at.y, TEX_CARRIER);
         carrier.setDisplaySize(CARRIER_SIZE, CARRIER_SIZE);
         // Body size is in unscaled texture pixels; the scale from
         // setDisplaySize shrinks it to CARRIER_SIZE * CARRIER_HITBOX on screen.
@@ -185,84 +202,59 @@ export class CartCarryMiniGame extends MiniGameScene {
             return;
         }
 
-        const dirY = inputService.direction().y;
-        const aDown = inputService.isDown('A');
-        const bDown = inputService.isDown('B');
-        const aPressed = aDown && !this.aWasDown;
-        const bPressed = bDown && !this.bWasDown;
-        this.aWasDown = aDown;
-        this.bWasDown = bDown;
+        const d1 = inputService.direction();
+        const d2 = inputService.direction2();
 
         if (this.state === 'ready') {
-            if (Math.abs(dirY) > INPUT_DEADZONE || aPressed || bPressed) {
+            if (Math.hypot(d1.x, d1.y) > INPUT_DEADZONE || Math.hypot(d2.x, d2.y) > INPUT_DEADZONE) {
                 this.startRun();
             }
+            this.drivePlants(time);
             return;
         }
 
-        this.elapsedMs += delta;
-        this.barFill.setScale(Math.min(1, this.elapsedMs / SURVIVE_MS), 1);
-        if (this.elapsedMs >= SURVIVE_MS) {
+        // Kinematic movement (no physics velocities): the loose-grip cart is
+        // then a simple position projection, and at <2 px/frame the arcade
+        // overlap (bodies re-sync from the game objects each step) is safe.
+        const dt = delta / 1000;
+        let bp = { x: this.back.x + d1.x * CARRIER_SPEED * dt, y: this.back.y + d1.y * CARRIER_SPEED * dt };
+        let fp = { x: this.front.x + d2.x * CARRIER_SPEED * dt, y: this.front.y + d2.y * CARRIER_SPEED * dt };
+        bp = clampToBand(bp);
+        fp = clampToBand(fp);
+        [bp, fp] = constrainSpan(bp, fp, MIN_DIST, MAX_DIST);
+        // Re-clamp after the projection; a residual overshoot of a few px in
+        // a corner is visual only (the cart stretches to the actual distance)
+        // and self-corrects next frame.
+        bp = clampToBand(bp);
+        fp = clampToBand(fp);
+        this.back.setPosition(bp.x, bp.y);
+        this.front.setPosition(fp.x, fp.y);
+        this.layoutCart();
+
+        const midX = (this.back.x + this.front.x) / 2;
+        this.followTarget.setPosition(midX, GAME_HEIGHT / 2);
+        this.barFill.setScale(
+            Math.min(1, Math.max(0, (midX - PROGRESS_START_X) / (GOAL_X - PROGRESS_START_X))),
+            1
+        );
+        if (midX >= GOAL_X) {
             this.onWin();
             return;
         }
 
-        const dt = delta / 1000;
-        if (dt > 0) {
-            // Bounds and the rigid-cart cap are enforced in velocity space —
-            // carriers land exactly on a limit, never teleport (keeps arcade
-            // overlap reliable, same rule as flappy's oscillators).
-            let vyBack = Math.abs(dirY) > INPUT_DEADZONE ? Math.sign(dirY) * CARRIER_SPEED : 0;
-            let vyFront = (aDown ? -CARRIER_SPEED : 0) + (bDown ? CARRIER_SPEED : 0);
-            vyBack = this.clampToBand(this.back.y, vyBack, dt);
-            vyFront = this.clampToBand(this.front.y, vyFront, dt);
-            [vyBack, vyFront] = this.capSeparation(vyBack, vyFront, dt);
-            this.back.setVelocityY(vyBack);
-            this.front.setVelocityY(vyFront);
-        }
-
-        this.layoutCart();
-        this.drivePlantsAndCull(time);
-    }
-
-    private clampToBand(y: number, vy: number, dt: number): number {
-        const next = y + vy * dt;
-        if (next < CARRIER_MIN_Y) {
-            return (CARRIER_MIN_Y - y) / dt;
-        }
-        if (next > CARRIER_MAX_Y) {
-            return (CARRIER_MAX_Y - y) / dt;
-        }
-        return vy;
-    }
-
-    /** Rigid cart: shave velocity off whichever carrier(s) move apart past the cap. */
-    private capSeparation(vyBack: number, vyFront: number, dt: number): [number, number] {
-        const nextBack = this.back.y + vyBack * dt;
-        const nextFront = this.front.y + vyFront * dt;
-        const over = Math.abs(nextBack - nextFront) - MAX_SEPARATION;
-        if (over <= 0) {
-            return [vyBack, vyFront];
-        }
-        const apart = Math.sign(nextBack - nextFront); // back moving this way separates
-        const backApart = vyBack * apart > 0;
-        const frontApart = vyFront * -apart > 0;
-        const share = (over / dt) * (backApart && frontApart ? 0.5 : 1);
-        return [
-            backApart ? vyBack - apart * share : vyBack,
-            frontApart ? vyFront + apart * share : vyFront
-        ];
+        this.drivePlants(time);
     }
 
     /** Stretch/rotate the cart between the carriers; re-seat the hit sensors. */
     private layoutCart(): void {
+        const dx = this.front.x - this.back.x;
         const dy = this.front.y - this.back.y;
-        this.cart.setPosition((BACK_X + FRONT_X) / 2, (this.back.y + this.front.y) / 2);
-        this.cart.setDisplaySize(Math.hypot(CART_SPAN, dy), CART_THICKNESS);
-        this.cart.setRotation(Math.atan2(dy, CART_SPAN));
+        this.cart.setPosition(this.back.x + dx / 2, this.back.y + dy / 2);
+        this.cart.setDisplaySize(Math.hypot(dx, dy), CART_THICKNESS);
+        this.cart.setRotation(Math.atan2(dy, dx));
         this.sensors.forEach((sensor, i) => {
             const f = (i + 1) / 4;
-            sensor.setPosition(BACK_X + CART_SPAN * f, this.back.y + dy * f);
+            sensor.setPosition(this.back.x + dx * f, this.back.y + dy * f);
         });
     }
 
@@ -270,129 +262,136 @@ export class CartCarryMiniGame extends MiniGameScene {
         this.state = 'running';
         this.promptEl?.remove();
         this.promptEl = null;
-        this.scheduleSection();
     }
 
-    /** Elapsed fraction of the survival timer — drives the difficulty ramp. */
-    private difficulty(): Difficulty {
-        return difficultyFor(this.elapsedMs / SURVIVE_MS);
-    }
+    // ---------------------------------------------------------------- level
 
-    // One weighted spawner (vs flappy's independent timers): sections never
-    // overlap, and a tilt pair buys itself a breather before the next roll.
-    private scheduleSection(): void {
-        const delay = this.difficulty().sectionIntervalMs + this.pendingExtraMs;
-        this.pendingExtraMs = 0;
-        this.sectionTimer = this.time.delayedCall(delay, () => {
-            this.spawnSection();
-            this.scheduleSection();
-        });
-    }
-
-    private spawnSection(): void {
-        const d = this.difficulty();
-        const roll = Math.random();
-        if (roll < d.tiltChance) {
-            this.spawnTiltPair(d);
-            this.pendingExtraMs = TILT_EXTRA_MS;
-        } else if (roll < d.tiltChance + d.piranhaChance) {
-            this.spawnPiranha(d);
-        } else {
-            this.spawnSpike(d.scrollSpeed, Phaser.Math.Between(d.spikeMinH, d.spikeMaxH), Math.random() < 0.5, SPAWN_X);
+    /**
+     * Places the whole level at create(): sections from OBSTACLE_START_X to
+     * OBSTACLE_END_X, each rolled from the difficulty at that point of the
+     * zone. `channelCenter` keeps consecutive open channels within
+     * MAX_CHANNEL_SHIFT so no transition is ever impossible for the cart.
+     */
+    private generateLevel(): void {
+        let x = OBSTACLE_START_X;
+        while (x < OBSTACLE_END_X) {
+            const t = (x - OBSTACLE_START_X) / (OBSTACLE_END_X - OBSTACLE_START_X);
+            const d = difficultyFor(t);
+            const roll = Math.random();
+            let width: number;
+            if (roll < d.gateChance) {
+                width = this.placeGate(d, x);
+            } else if (roll < d.gateChance + d.slalomChance) {
+                width = this.placeSlalom(d, x);
+            } else if (roll < d.gateChance + d.slalomChance + d.piranhaChance) {
+                width = this.placePiranha(d, x);
+            } else {
+                width = this.placeSingleSpike(d, x);
+            }
+            x += width + d.sectionGapPx;
         }
     }
 
-    private spawnSpike(scrollSpeed: number, height: number, fromCeiling: boolean, x: number): void {
+    /** Aligned ceiling+floor spikes leaving gateGapSize open at the shifted channel. */
+    private placeGate(d: Difficulty, x: number): number {
+        const halfGap = d.gateGapSize / 2;
+        const shifted = this.channelCenter + Phaser.Math.Between(-MAX_CHANNEL_SHIFT, MAX_CHANNEL_SHIFT);
+        const center = Phaser.Math.Clamp(
+            shifted,
+            CEILING_Y + halfGap + GATE_EDGE_MARGIN,
+            FLOOR_Y - halfGap - GATE_EDGE_MARGIN
+        );
+        this.placeSpike(x, center - halfGap - CEILING_Y, true);
+        this.placeSpike(x, FLOOR_Y - (center + halfGap), false);
+        this.channelCenter = center;
+        return SPIKE_W;
+    }
+
+    /** Two random-height spikes on opposite sides, offset by the cart span. */
+    private placeSlalom(d: Difficulty, x: number): number {
+        const floorLeads = Math.random() < 0.5;
+        const h1 = Phaser.Math.Between(d.spikeMinH, d.spikeMaxH);
+        const h2 = Phaser.Math.Between(d.spikeMinH, d.spikeMaxH);
+        this.placeSpike(x, h1, !floorLeads);
+        this.placeSpike(x + SLALOM_OFFSET_PX, h2, floorLeads);
+        this.channelCenter = openChannelCenter(h2, floorLeads);
+        return SLALOM_OFFSET_PX + SPIKE_W;
+    }
+
+    /** Single spike on the side that keeps the open channel near channelCenter. */
+    private placeSingleSpike(d: Difficulty, x: number): number {
+        const fromCeiling = this.channelCenter > GAME_HEIGHT / 2;
+        const h = Phaser.Math.Between(d.spikeMinH, d.spikeMaxH);
+        this.placeSpike(x, h, fromCeiling);
+        this.channelCenter = openChannelCenter(h, fromCeiling);
+        return SPIKE_W;
+    }
+
+    /** Pipe on the floor (always deadly) + plant that cycles hidden/warn/extended. */
+    private placePiranha(d: Difficulty, x: number): number {
+        const pipe = this.obstacles.create(x, FLOOR_Y - PIPE_H / 2, TEX_PIPE) as Phaser.Physics.Arcade.Sprite;
+        pipe.setDisplaySize(PIPE_W, PIPE_H);
+        pipe.refreshBody();
+
+        // Body fixed ONCE at the extended pose (static bodies don't follow
+        // later visual changes — exactly what the phase cycle needs).
+        const plant = this.obstacles.create(x, plantY('extended'), TEX_PLANT) as Phaser.Physics.Arcade.Sprite;
+        plant.setDisplaySize(PLANT_W, PLANT_H);
+        plant.refreshBody();
+        (plant.body as Phaser.Physics.Arcade.StaticBody).setSize(PLANT_W * SPIKE_HITBOX, PLANT_H * SPIKE_HITBOX);
+        plant.setVisible(false).setDisplaySize(PLANT_W, PLANT_PEEK_H).setY(plantY('hidden'));
+        const cycleMs = d.piranhaHiddenMs + d.piranhaWarnMs + d.piranhaExtendedMs;
+        plant.setData(DEADLY, false);
+        plant.setData(CUR_PHASE, 'hidden' satisfies PlantPhase);
+        plant.setData(PHASE_OFFSET, Math.random() * cycleMs);
+        plant.setData(HIDDEN_MS, d.piranhaHiddenMs);
+        plant.setData(WARN_MS, d.piranhaWarnMs);
+        plant.setData(EXTENDED_MS, d.piranhaExtendedMs);
+        this.plants.push(plant);
+
+        this.channelCenter = (CEILING_Y + (FLOOR_Y - PIPE_H - PLANT_H)) / 2;
+        return SPIKE_W;
+    }
+
+    private placeSpike(x: number, height: number, fromCeiling: boolean): void {
         const spike = this.obstacles.create(
             x,
             fromCeiling ? CEILING_Y + height / 2 : FLOOR_Y - height / 2,
             TEX_SPIKE
         ) as Phaser.Physics.Arcade.Sprite;
         spike.setDisplaySize(SPIKE_W, height).setFlipY(fromCeiling);
-        spike.setBodySize(spike.width * SPIKE_HITBOX, spike.height * SPIKE_HITBOX);
-        spike.setVelocityX(-scrollSpeed);
+        spike.refreshBody();
+        (spike.body as Phaser.Physics.Arcade.StaticBody).setSize(SPIKE_W * SPIKE_HITBOX, height * SPIKE_HITBOX);
     }
 
-    /**
-     * Floor+ceiling spikes offset by exactly the cart span: when the floor
-     * spike is under one carrier the ceiling spike is over the other, so the
-     * cart must tilt by `tiltSeparation` (heights sum to it plus TILT_BASE —
-     * always inside MAX_SEPARATION, see difficulty.ts invariants).
-     */
-    private spawnTiltPair(d: Difficulty): void {
-        const sum = d.tiltSeparation + TILT_BASE;
-        const jitter = Phaser.Math.Between(-SPIKE_JITTER, SPIKE_JITTER);
-        const floorH = sum / 2 + jitter;
-        const ceilingH = sum - floorH;
-        const floorLeads = Math.random() < 0.5;
-        this.spawnSpike(d.scrollSpeed, floorH, false, floorLeads ? SPAWN_X : SPAWN_X + CART_SPAN);
-        this.spawnSpike(d.scrollSpeed, ceilingH, true, floorLeads ? SPAWN_X + CART_SPAN : SPAWN_X);
-    }
+    // --------------------------------------------------------------- update
 
-    /** Pipe on the floor (always deadly) + plant that cycles hidden/warn/extended. */
-    private spawnPiranha(d: Difficulty): void {
-        const pipe = this.obstacles.create(SPAWN_X, FLOOR_Y - PIPE_H / 2, TEX_PIPE) as Phaser.Physics.Arcade.Sprite;
-        pipe.setDisplaySize(PIPE_W, PIPE_H).setVelocityX(-d.scrollSpeed);
-
-        const plant = this.obstacles.create(SPAWN_X, this.plantY('hidden'), TEX_PLANT) as Phaser.Physics.Arcade.Sprite;
-        plant.setDisplaySize(PLANT_W, PLANT_PEEK_H).setVisible(false).setVelocityX(-d.scrollSpeed);
-        const cycleMs = d.piranhaHiddenMs + d.piranhaWarnMs + d.piranhaExtendedMs;
-        plant.setData(IS_PLANT, true);
-        plant.setData(DEADLY, false);
-        plant.setData(CUR_PHASE, 'hidden' satisfies PlantPhase);
-        plant.setData(SPAWN_T, this.time.now);
-        plant.setData(PHASE_OFFSET, Math.random() * cycleMs);
-        plant.setData(HIDDEN_MS, d.piranhaHiddenMs);
-        plant.setData(WARN_MS, d.piranhaWarnMs);
-        plant.setData(EXTENDED_MS, d.piranhaExtendedMs);
-    }
-
-    private plantY(phase: PlantPhase): number {
-        const pipeTop = FLOOR_Y - PIPE_H;
-        return phase === 'extended' ? pipeTop - PLANT_H / 2 : pipeTop - PLANT_PEEK_H / 2;
-    }
-
-    /**
-     * Cull off-screen obstacles and run the piranha cycle. The phase comes
-     * from scene time (no per-pipe timers to clean up); visuals and the
-     * DEADLY flag change only on phase transitions. The plant's body stays
-     * enabled throughout so it keeps scrolling — deadliness is gated by the
-     * flag in onObstacleTouch, not by body.enable.
-     */
-    private drivePlantsAndCull(time: number): void {
-        for (const child of [...this.obstacles.getChildren()]) {
-            const sprite = child as Phaser.Physics.Arcade.Sprite;
-            if (sprite.x < -CULL_MARGIN) {
-                sprite.destroy();
-                continue;
-            }
-            if (!sprite.getData(IS_PLANT)) {
-                continue;
-            }
-            const hiddenMs = sprite.getData(HIDDEN_MS) as number;
-            const warnMs = sprite.getData(WARN_MS) as number;
-            const extendedMs = sprite.getData(EXTENDED_MS) as number;
+    /** Run the piranha cycle: visuals + DEADLY flag change only on phase transitions. */
+    private drivePlants(time: number): void {
+        for (const plant of this.plants) {
+            const hiddenMs = plant.getData(HIDDEN_MS) as number;
+            const warnMs = plant.getData(WARN_MS) as number;
+            const extendedMs = plant.getData(EXTENDED_MS) as number;
             const cycleMs = hiddenMs + warnMs + extendedMs;
-            const cyclePos =
-                (time - (sprite.getData(SPAWN_T) as number) + (sprite.getData(PHASE_OFFSET) as number)) % cycleMs;
+            const cyclePos = (time - this.createdAt + (plant.getData(PHASE_OFFSET) as number)) % cycleMs;
             const phase: PlantPhase = cyclePos < hiddenMs ? 'hidden' : cyclePos < hiddenMs + warnMs ? 'warn' : 'extended';
-            if (phase === sprite.getData(CUR_PHASE)) {
+            if (phase === plant.getData(CUR_PHASE)) {
                 continue;
             }
-            sprite.setData(CUR_PHASE, phase);
-            sprite.setData(DEADLY, phase === 'extended');
-            sprite.setVisible(phase !== 'hidden');
-            sprite.setDisplaySize(PLANT_W, phase === 'extended' ? PLANT_H : PLANT_PEEK_H);
-            sprite.setY(this.plantY(phase));
+            plant.setData(CUR_PHASE, phase);
+            plant.setData(DEADLY, phase === 'extended');
+            plant.setVisible(phase !== 'hidden');
+            plant.setDisplaySize(PLANT_W, phase === 'extended' ? PLANT_H : PLANT_PEEK_H);
+            plant.setY(plantY(phase));
             if (phase === 'warn') {
-                sprite.setTint(PLANT_WARN_TINT);
+                plant.setTint(PLANT_WARN_TINT);
             } else {
-                sprite.clearTint();
+                plant.clearTint();
             }
         }
     }
 
-    private onObstacleTouch(obstacle: Phaser.Physics.Arcade.Sprite): void {
+    private onObstacleTouch(obstacle: Phaser.GameObjects.GameObject): void {
         if (obstacle.getData(DEADLY) === false) {
             return; // a hidden/peeking piranha plant
         }
@@ -401,7 +400,7 @@ export class CartCarryMiniGame extends MiniGameScene {
 
     private onWin(): void {
         this.state = 'ended';
-        this.freezePlay();
+        this.physics.pause();
         this.time.delayedCall(WIN_BEAT_MS, () => this.completeActivity());
     }
 
@@ -410,10 +409,15 @@ export class CartCarryMiniGame extends MiniGameScene {
             return;
         }
         this.state = 'ended';
-        this.freezePlay();
+        this.physics.pause();
         this.back.setTint(0xff0000);
         this.front.setTint(0xff0000);
         this.cart.setTint(0xff0000);
+
+        // Restore normal controls: the fail flow's video skip is an A-press,
+        // so the vpad must show its buttons again (PLAN.md §3.10).
+        inputService.setTwinStick(false);
+        setVirtualPadTwinStick(false);
 
         this.failFlowCleanup = runFailFlow({
             scene: this,
@@ -426,9 +430,21 @@ export class CartCarryMiniGame extends MiniGameScene {
             onQuit: () => this.abortActivity()
         });
     }
+}
 
-    private freezePlay(): void {
-        this.sectionTimer?.remove();
-        this.physics.pause();
-    }
+function clampToBand(p: Vec2): Vec2 {
+    return {
+        x: Math.min(Math.max(p.x, CARRIER_MIN_X), CARRIER_MAX_X),
+        y: Math.min(Math.max(p.y, CARRIER_MIN_Y), CARRIER_MAX_Y)
+    };
+}
+
+/** Midpoint of the corridor left open beside a single spike. */
+function openChannelCenter(height: number, fromCeiling: boolean): number {
+    return fromCeiling ? (CEILING_Y + height + FLOOR_Y) / 2 : (CEILING_Y + FLOOR_Y - height) / 2;
+}
+
+function plantY(phase: PlantPhase): number {
+    const pipeTop = FLOOR_Y - PIPE_H;
+    return phase === 'extended' ? pipeTop - PLANT_H / 2 : pipeTop - PLANT_PEEK_H / 2;
 }

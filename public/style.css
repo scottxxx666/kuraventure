@@ -333,3 +333,19 @@ html:lang(ja) #ui-overlay {
 .vpad-button[data-down='true'] {
     background: rgba(255, 255, 255, 0.35);
 }
+
+/* Twin-stick mode (src/input/VirtualPadSource.ts, PLAN.md §3.10 exception):
+   a second stick replaces the A/B buttons bottom-right. */
+.vpad-stick-right {
+    left: auto;
+    right: calc(24px + env(safe-area-inset-right, 0px));
+    display: none;
+}
+
+.vpad--twin .vpad-stick-right {
+    display: block;
+}
+
+.vpad--twin .vpad-buttons {
+    display: none;
+}

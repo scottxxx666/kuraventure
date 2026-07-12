@@ -18,7 +18,7 @@
     "minigame.flappy.failed": "しっぱい！",
     "minigame.flappy.retry": "もう一度",
     "minigame.flappy.quit": "あきらめる",
-    "minigame.cartCarry.prompt": "スティックで後ろ・A/Bで前を操作",
+    "minigame.cartCarry.prompt": "左スティック/WASDで後ろ・右スティック/矢印キーで前を操作",
     "minigame.cartCarry.failed": "しっぱい！",
     "minigame.cartCarry.retry": "もう一度",
     "minigame.cartCarry.quit": "あきらめる",
