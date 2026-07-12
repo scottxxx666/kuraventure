@@ -1,8 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../../config/dimensions';
 import { inputService } from '../../../input/InputService';
-import { i18nService } from '../../../services/I18nService';
-import { createOverlayElement } from '../../../ui/domOverlay';
+import { runFailFlow } from '../failFlow';
 import { SceneKeys } from '../../keys';
 import { MiniGameScene } from '../MiniGameScene';
 import { difficultyFor } from './difficulty';
@@ -24,7 +23,6 @@ const ITEM_DRIFT_X = 25; // max sideways velocity of falling items, px/s
 const BOSS_SPEED = 60;
 const BOSS_Y = 36;
 const PIZZA_DEFLECT_VELOCITY = -260; // boss knocks pizzas up off-screen
-const FAIL_BANNER_MS = 2000;
 const WIN_BEAT_MS = 300; // pause on the full bar before completing
 // Logical display sizes (the placeholder photos are much larger).
 const PLAYER_W = 16;
@@ -51,8 +49,7 @@ export class PizzaRunMiniGame extends MiniGameScene {
     private spawnTimers: Phaser.Time.TimerEvent[] = [];
     private caught = 0;
     private ended = false;
-    private domNodes: HTMLElement[] = [];
-    private unsubscribers: (() => void)[] = [];
+    private failFlowCleanup: (() => void) | null = null;
 
     constructor() {
         super(SceneKeys.PizzaRun);
@@ -76,8 +73,7 @@ export class PizzaRunMiniGame extends MiniGameScene {
         this.ended = false;
         this.boss = null;
         this.spawnTimers = [];
-        this.domNodes = [];
-        this.unsubscribers = [];
+        this.failFlowCleanup = null;
 
         this.cameras.main.setBackgroundColor('#1d2233');
 
@@ -105,14 +101,7 @@ export class PizzaRunMiniGame extends MiniGameScene {
             this.time.addEvent({ delay: PIZZA_TICK_MS, loop: true, callback: () => this.spawnPizzas() })
         ];
 
-        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-            for (const el of this.domNodes) {
-                el.remove();
-            }
-            for (const off of this.unsubscribers) {
-                off();
-            }
-        });
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.failFlowCleanup?.());
     }
 
     update(): void {
@@ -201,15 +190,15 @@ export class PizzaRunMiniGame extends MiniGameScene {
         this.freezePlay();
         this.player.setTint(0xff0000);
 
-        const banner = this.addOverlay('minigame-panel');
-        const text = document.createElement('div');
-        text.className = 'menu-title pizza-run-failed';
-        text.textContent = i18nService.t('minigame.pizzaRun.failed');
-        banner.appendChild(text);
-
-        this.time.delayedCall(FAIL_BANNER_MS, () => {
-            banner.remove();
-            this.playFailVideo();
+        this.failFlowCleanup = runFailFlow({
+            scene: this,
+            videoKey: ENDING_VIDEO_KEY,
+            failedTextKey: 'minigame.pizzaRun.failed',
+            retryTextKey: 'minigame.pizzaRun.retry',
+            quitTextKey: 'minigame.pizzaRun.quit',
+            bannerClassName: 'pizza-run-failed',
+            onRetry: () => this.scene.restart({ activity: this.activity, flagId: this.flagId }),
+            onQuit: () => this.abortActivity()
         });
     }
 
@@ -218,61 +207,5 @@ export class PizzaRunMiniGame extends MiniGameScene {
             timer.remove();
         }
         this.physics.pause();
-    }
-
-    private playFailVideo(): void {
-        const video = this.add.video(GAME_WIDTH / 2, GAME_HEIGHT / 2, ENDING_VIDEO_KEY).setDepth(100);
-        const fit = (): void => {
-            if (video.width > 0 && video.height > 0) {
-                const scale = Math.min(GAME_WIDTH / video.width, GAME_HEIGHT / video.height);
-                video.setDisplaySize(video.width * scale, video.height * scale);
-            }
-        };
-        video.on(Phaser.GameObjects.Events.VIDEO_METADATA, fit);
-        fit();
-
-        let done = false;
-        const finish = (): void => {
-            if (done) {
-                return;
-            }
-            done = true;
-            offSkip();
-            video.destroy();
-            this.showRetryMenu();
-        };
-        video.once(Phaser.GameObjects.Events.VIDEO_COMPLETE, finish);
-        video.once(Phaser.GameObjects.Events.VIDEO_ERROR, finish);
-        // The fail happens long after the trigger gesture, so the browser may
-        // refuse audible playback — Phaser signals that with VIDEO_LOCKED;
-        // muted autoplay is always allowed.
-        video.once(Phaser.GameObjects.Events.VIDEO_LOCKED, () => {
-            video.setMute(true);
-            video.play();
-        });
-        const offSkip = inputService.onPress('A', finish);
-        this.unsubscribers.push(offSkip);
-        video.play();
-    }
-
-    private showRetryMenu(): void {
-        const panel = this.addOverlay('minigame-panel');
-        const retry = document.createElement('button');
-        retry.className = 'menu-button';
-        retry.textContent = i18nService.t('minigame.pizzaRun.retry');
-        retry.addEventListener('click', () =>
-            this.scene.restart({ activity: this.activity, flagId: this.flagId })
-        );
-        const quit = document.createElement('button');
-        quit.className = 'menu-button';
-        quit.textContent = i18nService.t('minigame.pizzaRun.quit');
-        quit.addEventListener('click', () => this.abortActivity());
-        panel.append(retry, quit);
-    }
-
-    private addOverlay(className: string): HTMLDivElement {
-        const el = createOverlayElement(className);
-        this.domNodes.push(el);
-        return el;
     }
 }

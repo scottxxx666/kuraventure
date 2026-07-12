@@ -13,6 +13,7 @@ import { BootScene } from './scenes/BootScene';
 import { DialogueScene } from './scenes/DialogueScene';
 import { MainMenuScene } from './scenes/MainMenuScene';
 import { TemplateMiniGame } from './scenes/minigames/_template/TemplateMiniGame';
+import { FlappyMiniGame } from './scenes/minigames/flappy/FlappyMiniGame';
 import { PizzaRunMiniGame } from './scenes/minigames/pizza-run/PizzaRunMiniGame';
 import { PreloadScene } from './scenes/PreloadScene';
 import { StageSelectScene } from './scenes/StageSelectScene';
@@ -33,7 +34,8 @@ const game = new Phaser.Game({
         DialogueScene,
         TalkScene,
         TemplateMiniGame,
-        PizzaRunMiniGame
+        PizzaRunMiniGame,
+        FlappyMiniGame
     ]
 });
 

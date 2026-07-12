@@ -14,6 +14,10 @@
     "minigame.pizzaRun.failed": "失敗了！",
     "minigame.pizzaRun.retry": "再試一次",
     "minigame.pizzaRun.quit": "放棄",
+    "minigame.flappy.prompt": "按 A 起飛",
+    "minigame.flappy.failed": "失敗了！",
+    "minigame.flappy.retry": "再試一次",
+    "minigame.flappy.quit": "放棄",
     "stage.demo.title": "示範關卡",
     "stage.demo-2.title": "示範關卡 2",
     "stage.demo-branch.title": "分支關卡"

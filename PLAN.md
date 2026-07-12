@@ -108,6 +108,7 @@ src/
     TalkScene.ts             # THE generic interactive NPC talk player (§3.11)
     minigames/               # SHARED pool — any stage's trigger can reference any mini-game
       MiniGameScene.ts       # abstract base class — THE mini-game contract (§3.3)
+      failFlow.ts            # shared fail flow: banner → ending video → Retry/Give up
       _template/
         TemplateMiniGame.ts  # copy-me example implementing the contract
       <name>/                # one folder per real mini-game; private helpers live beside it
@@ -565,6 +566,11 @@ Remaining:
    github.com/scottxxx666/izone-pizza-game), triggered from the demo stage; its art is
    placeholder photos — see `public/assets/images/pizza-run/README.md` for
    replacement sizes.
+   Second mini-game done: **Flappy Flight** (`scenes/minigames/flappy/`), a Flappy
+   Bird-style survival run (flap with A, timed difficulty ramp, oscillating gates /
+   floaters / diagonal sweepers), also triggered from the demo stage; placeholder
+   art — see `public/assets/images/flappy/README.md`. Its fail flow is shared with
+   Pizza Run via `scenes/minigames/failFlow.ts`.
 9. **Polish** — responsive `Scale.FIT` tuning, transitions, audio, credits. TBD scope.
 
 **Do not run build/test/lint scripts — the user runs them manually.** Write tests;

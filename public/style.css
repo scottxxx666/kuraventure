@@ -192,8 +192,9 @@ html:lang(ja) #ui-overlay {
     text-align: left;
 }
 
-/* Pizza Run fail banner (src/scenes/minigames/pizza-run/). */
-.pizza-run-failed {
+/* Mini-game fail banners (src/scenes/minigames/failFlow.ts). */
+.pizza-run-failed,
+.flappy-failed {
     color: #ff5a5a;
 }
 
@@ -276,10 +277,12 @@ html:lang(ja) #ui-overlay {
 }
 
 /* Virtual gamepad (src/input/VirtualPadSource.ts), touch devices only. */
+/* viewport-fit=cover extends the page under the notch/curved corners in
+   landscape — env() keeps the pad in the touch-reliable safe area. */
 .vpad-stick {
     position: absolute;
-    left: 24px;
-    bottom: 24px;
+    left: calc(24px + env(safe-area-inset-left, 0px));
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
     width: 96px;
     height: 96px;
     border-radius: 50%;
@@ -302,8 +305,8 @@ html:lang(ja) #ui-overlay {
 
 .vpad-buttons {
     position: absolute;
-    right: 24px;
-    bottom: 24px;
+    right: calc(24px + env(safe-area-inset-right, 0px));
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
     display: flex;
     align-items: flex-end;
     gap: 16px;

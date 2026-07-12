@@ -14,6 +14,10 @@
     "minigame.pizzaRun.failed": "しっぱい！",
     "minigame.pizzaRun.retry": "もう一度",
     "minigame.pizzaRun.quit": "あきらめる",
+    "minigame.flappy.prompt": "Aで飛ぶ",
+    "minigame.flappy.failed": "しっぱい！",
+    "minigame.flappy.retry": "もう一度",
+    "minigame.flappy.quit": "あきらめる",
     "stage.demo.title": "デモステージ",
     "stage.demo-2.title": "デモステージ 2",
     "stage.demo-branch.title": "分岐ステージ"
