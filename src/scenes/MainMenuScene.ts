@@ -3,6 +3,7 @@ import { eventBus } from '../core/EventBus';
 import { flowDirector } from '../core/FlowDirector';
 import { LOCALES, LOCALE_LABELS, i18nService } from '../services/I18nService';
 import { createOverlayElement } from '../ui/domOverlay';
+import { enterFullscreenAndLockLandscape } from '../ui/fullscreen';
 import { SceneKeys } from './keys';
 
 /**
@@ -48,6 +49,9 @@ export class MainMenuScene extends Phaser.Scene {
                 return;
             }
             started = true;
+            // This gesture is also the user activation fullscreen requires
+            // (and later lets videos autoplay with sound — PLAN.md §3.6).
+            enterFullscreenAndLockLandscape(this.scale);
             flowDirector.openStageSelect();
         };
         this.input.keyboard?.once('keydown', onStart);

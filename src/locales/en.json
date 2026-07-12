@@ -1,6 +1,7 @@
 {
     "menu.title": "KURAVENTURE",
     "menu.start": "Tap or press any key",
+    "rotate.prompt": "Please rotate your device",
     "stageSelect.title": "Select Stage",
     "world.stageComplete": "Stage complete! Press A to continue",
     "world.tasksIncomplete": "There's still something to do here",

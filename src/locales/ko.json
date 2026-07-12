@@ -1,6 +1,7 @@
 {
     "menu.title": "KURAVENTURE",
     "menu.start": "탭하거나 아무 키나 누르세요",
+    "rotate.prompt": "기기를 가로로 돌려 주세요",
     "stageSelect.title": "스테이지 선택",
     "world.stageComplete": "스테이지 클리어! A를 눌러 계속",
     "world.tasksIncomplete": "아직 할 일이 남아 있습니다",

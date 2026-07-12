@@ -1,6 +1,7 @@
 {
     "menu.title": "KURAVENTURE",
     "menu.start": "點擊或按任意鍵",
+    "rotate.prompt": "請將裝置轉成橫向",
     "stageSelect.title": "選擇關卡",
     "world.stageComplete": "關卡完成！按 A 繼續",
     "world.tasksIncomplete": "這裡還有事情沒完成",

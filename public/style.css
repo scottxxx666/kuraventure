@@ -232,6 +232,49 @@ html:lang(ja) #ui-overlay {
     right: calc(var(--px) * 6px);
 }
 
+/* Landscape-only rotate prompt (src/ui/rotateOverlay.ts), touch devices only.
+   CSS alone toggles it — visible while the viewport is portrait; z-index keeps
+   it above later-appended overlay children (menus, vpad). */
+.rotate-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: calc(var(--px) * 10px);
+    background: #000;
+    font-size: calc(var(--px) * 12px);
+    text-align: center;
+    pointer-events: auto;
+}
+
+@media (orientation: portrait) {
+    .rotate-overlay {
+        display: flex;
+    }
+}
+
+.rotate-phone {
+    width: calc(var(--px) * 10px);
+    height: calc(var(--px) * 18px);
+    border: calc(var(--px) * 2px) solid #fff;
+    border-radius: calc(var(--px) * 2px);
+    animation: rotate-phone-hint 2s ease-in-out infinite;
+}
+
+@keyframes rotate-phone-hint {
+    0%,
+    25% {
+        transform: rotate(0deg);
+    }
+    65%,
+    100% {
+        transform: rotate(90deg);
+    }
+}
+
 /* Virtual gamepad (src/input/VirtualPadSource.ts), touch devices only. */
 .vpad-stick {
     position: absolute;

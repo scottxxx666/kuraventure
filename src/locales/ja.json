@@ -1,6 +1,7 @@
 {
     "menu.title": "KURAVENTURE",
     "menu.start": "タップまたはキーでスタート",
+    "rotate.prompt": "端末を横向きにしてください",
     "stageSelect.title": "ステージ選択",
     "world.stageComplete": "ステージクリア！Aで次へ",
     "world.tasksIncomplete": "まだやることが残っている",

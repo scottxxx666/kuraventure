@@ -39,7 +39,9 @@
 | Decision | Choice |
 |---|---|
 | Engine | **Phaser 3.90.0**, pinned — user chose to stay on 3.x over the now-stable Phaser 4 |
-| Canvas | **320×180 logical**, `Scale.FIT`, `pixelArt: true`, integer art scale |
+| Canvas | **320×180 logical**, `Scale.FIT`, `pixelArt: true`, integer art scale — user re-confirmed `FIT` (letterbox bars on >16:9 phones) over `EXPAND` |
+| Mobile orientation | **Landscape only** (user confirmed): CSS rotate-device overlay in portrait (`ui/rotateOverlay.ts`); Android also hard-locks via `orientation.lock` once fullscreen |
+| Fullscreen | Enter browser fullscreen on the start-game gesture (`ui/fullscreen.ts`; `fullscreenTarget: document.body` so the DOM overlay stays visible). No-op on iPhone Safari (no Fullscreen API) |
 | Language / bundler | TypeScript + Vite |
 | Progress persistence | localStorage completion flags + item inventory (trigger/stage/item IDs, versioned key) — §3.4. User chose persisted inventory over deriving items from flags |
 | Maps | Tiled JSON, one per stage, all played by the single `WorldScene` — §3.9 |
@@ -470,6 +472,11 @@ export interface GameInput {
 - Design constraints that follow: mini-games must be D-pad + 1–2 buttons playable;
   avoid pixel-precise or twitch-heavy challenges (virtual sticks are imprecise); keep
   critical visuals out of the bottom screen corners (thumbs sit there).
+- **Landscape only** (confirmed): `ui/rotateOverlay.ts` covers the screen with a
+  localized "rotate your device" prompt while a touch device is portrait (pure CSS
+  media query toggles it). The start-game gesture also enters browser fullscreen and,
+  on Android, hard-locks landscape (`ui/fullscreen.ts`); iPhone Safari supports
+  neither, so the overlay is the only enforcement there.
 
 ### 3.11 Interactive NPC Talk (Ink)
 
@@ -570,6 +577,5 @@ don't run them.
 - Which mini-games (gameplay, count) and which stages trigger them.
 - Art direction: asset sources (including tilesets for the Tiled maps).
 - Audio: music/SFX requirements; whether videos carry their own audio.
-- Mobile orientation: lock to landscape (assumed — matches joystick-left/buttons-right
-  layout) or also support portrait?
-- Autoplay-with-sound after a trigger gesture still needs a real-browser check (§3.6).
+- Autoplay-with-sound still needs a real-browser check (§3.6) — the user confirmed
+  videos only ever play after the start-game click, so a gesture always precedes them.
