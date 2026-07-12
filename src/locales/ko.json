@@ -22,6 +22,10 @@
     "minigame.cartCarry.failed": "실패!",
     "minigame.cartCarry.retry": "다시 도전",
     "minigame.cartCarry.quit": "포기",
+    "minigame.dance.prompt": "A를 눌러 시작 — 박자에 맞춰 화살표를 누르세요",
+    "minigame.dance.failed": "실패!",
+    "minigame.dance.retry": "다시 도전",
+    "minigame.dance.quit": "포기",
     "stage.demo.title": "데모 스테이지",
     "stage.demo-2.title": "데모 스테이지 2",
     "stage.demo-branch.title": "분기 스테이지"

@@ -580,6 +580,14 @@ Remaining:
    floaters / diagonal sweepers), also triggered from the demo stage; placeholder
    art — see `public/assets/images/flappy/README.md`. Its fail flow is shared with
    Pizza Run via `scenes/minigames/failFlow.ts`.
+   Also done: **Dance Beat** (`scenes/minigames/dance/`), a DDR-style rhythm game
+   (arrow notes rise to a receptor line, press the matching direction; score
+   threshold at the song's end decides win/fail), triggered from the demo stage.
+   It establishes the audio conventions: music lives in `public/assets/audio/`
+   (see its README — the track is an uncommitted placeholder), playback starts
+   from a user gesture (the run's A press) so autoplay is never blocked, and
+   gameplay timing follows the music's own clock (`sound.seek`), falling back to
+   the frame clock while no track exists.
 9. **Polish** — responsive `Scale.FIT` tuning, transitions, audio, credits. TBD scope.
 
 **Do not run build/test/lint scripts — the user runs them manually.** Write tests;

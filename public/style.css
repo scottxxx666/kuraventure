@@ -192,10 +192,26 @@ html:lang(ja) #ui-overlay {
     text-align: left;
 }
 
+/* Dance score readout (src/scenes/minigames/dance/DanceMiniGame.ts):
+   top-center like .hud-prompt, shown while the run plays. */
+.dance-score {
+    position: absolute;
+    top: calc(var(--px) * 6px);
+    left: 0;
+    right: 0;
+    width: fit-content;
+    margin: 0 auto;
+    font-size: calc(var(--px) * 12px);
+    color: #fff;
+    background: rgba(0, 0, 0, 0.5);
+    padding: calc(var(--px) * 2px) calc(var(--px) * 4px);
+}
+
 /* Mini-game fail banners (src/scenes/minigames/failFlow.ts). */
 .pizza-run-failed,
 .flappy-failed,
-.cart-carry-failed {
+.cart-carry-failed,
+.dance-failed {
     color: #ff5a5a;
 }
 

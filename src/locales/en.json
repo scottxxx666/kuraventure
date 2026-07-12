@@ -22,6 +22,10 @@
     "minigame.cartCarry.failed": "Failed!",
     "minigame.cartCarry.retry": "Retry",
     "minigame.cartCarry.quit": "Give up",
+    "minigame.dance.prompt": "Press A to start — hit the arrows on the beat",
+    "minigame.dance.failed": "Failed!",
+    "minigame.dance.retry": "Retry",
+    "minigame.dance.quit": "Give up",
     "stage.demo.title": "Demo Stage",
     "stage.demo-2.title": "Demo Stage 2",
     "stage.demo-branch.title": "Branch Stage"
