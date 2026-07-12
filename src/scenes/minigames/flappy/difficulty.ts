@@ -33,14 +33,14 @@ function lerp(from: number, to: number, t: number): number {
 export function difficultyFor(elapsedFraction: number): Difficulty {
     const t = Math.min(Math.max(elapsedFraction, 0), 1);
     return {
-        scrollSpeed: lerp(60, 110, t),
-        gateIntervalMs: lerp(2600, 1800, t),
-        gapSize: lerp(64, 44, t),
-        moverChance: t < MOVERS_FROM ? 0 : lerp(0.25, 0.6, (t - MOVERS_FROM) / (1 - MOVERS_FROM)),
+        scrollSpeed: lerp(55, 100, t),
+        gateIntervalMs: lerp(2600, 2000, t),
+        gapSize: lerp(88, 64, t),
+        moverChance: t < MOVERS_FROM ? 0 : lerp(0.25, 0.5, (t - MOVERS_FROM) / (1 - MOVERS_FROM)),
         floaterActive: t >= FLOATERS_FROM,
-        floaterIntervalMs: lerp(3200, 2200, t),
+        floaterIntervalMs: lerp(3400, 2600, t),
         bobChance: lerp(0.2, 0.5, t),
         sweeperActive: t >= SWEEPERS_FROM,
-        sweeperIntervalMs: lerp(4000, 2500, t)
+        sweeperIntervalMs: lerp(4200, 3000, t)
     };
 }

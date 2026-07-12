@@ -29,8 +29,8 @@ const FLAP_VELOCITY = -180; // px/s upward per A press
 const PLAYER_HITBOX = 0.7; // body shrunk vs the visible sprite (touch fairness)
 const HOVER_VELOCITY = 15; // gentle pre-start bob, px/s
 
-const GATE_SEGMENT = 24; // square segment size of a gate column
-const GATE_EDGE_MARGIN = 16; // min distance of the gap edge from floor/ceiling
+const GATE_SEGMENT = 32; // square segment size of a gate column
+const GATE_EDGE_MARGIN = 8; // min distance of the gap edge from floor/ceiling
 const MOVER_AMPLITUDE = 18; // px a moving gate's gap travels up/down
 const MOVER_PERIOD_MS = 2200;
 const BOB_AMPLITUDE = 12;
@@ -40,9 +40,9 @@ const SWEEPER_VY = 65; // vertical crossing speed, px/s
 const CULL_MARGIN = 120; // obstacles die this far off-screen
 
 // Logical display sizes (the placeholder photos are much larger).
-const PLAYER_SIZE = 16;
-const FLOATER_SIZE = 16;
-const SWEEPER_SIZE = 24;
+const PLAYER_SIZE = 24;
+const FLOATER_SIZE = 24;
+const SWEEPER_SIZE = 32;
 const BAR_W = 120;
 const BAR_H = 5;
 const BAR_Y = 8;

@@ -9,14 +9,14 @@ describe('flappy difficultyFor', () => {
 
     it('has the intended endpoints', () => {
         const start = difficultyFor(0);
-        expect(start.scrollSpeed).toBe(60);
+        expect(start.scrollSpeed).toBe(55);
         expect(start.gateIntervalMs).toBe(2600);
-        expect(start.gapSize).toBe(64);
+        expect(start.gapSize).toBe(88);
         const end = difficultyFor(1);
-        expect(end.scrollSpeed).toBe(110);
-        expect(end.gateIntervalMs).toBe(1800);
-        expect(end.gapSize).toBe(44);
-        expect(end.moverChance).toBe(0.6);
+        expect(end.scrollSpeed).toBe(100);
+        expect(end.gateIntervalMs).toBe(2000);
+        expect(end.gapSize).toBe(64);
+        expect(end.moverChance).toBe(0.5);
     });
 
     it('ramps monotonically: faster scroll, denser gates, smaller gaps', () => {

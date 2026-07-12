@@ -10,10 +10,10 @@ author at exactly these sizes, no upscaling):
 
 | file | logical size | notes |
 |---|---|---|
-| `player.png` | 16×16 | the flapping player; hitbox is 70% of the sprite |
-| `pipe.png` | 24×24 | one segment of a gate column (tiled vertically) |
-| `floater.png` | 16×16 | free-floating obstacle; some bob up/down |
-| `sweeper.png` | 24×24 | diagonal sweeper from the top/bottom-right corner |
+| `player.png` | 24×24 | the flapping player; hitbox is 70% of the sprite |
+| `pipe.png` | 32×32 | one segment of a gate column (tiled vertically) |
+| `floater.png` | 24×24 | free-floating obstacle; some bob up/down |
+| `sweeper.png` | 32×32 | diagonal sweeper from the top/bottom-right corner |
 
 The fail video lives at `public/assets/video/flappy-ending.mp4` (currently a
 copy of pizza-run's; 320×180 recommended — any 16:9 works, it is
