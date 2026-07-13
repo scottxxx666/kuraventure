@@ -365,3 +365,69 @@ html:lang(ja) #ui-overlay {
 .vpad--twin .vpad-buttons {
     display: none;
 }
+
+/* Lane mode (src/input/VirtualPadSource.ts, PLAN.md §3.10 exception for the
+   dance mini-game): four tap zones replace the joystick + A/B buttons.
+   The overlay covers the window but the canvas is Scale.FIT + CENTER_BOTH
+   (letterboxed), so the wrapper reproduces the canvas rect in pure CSS —
+   zone percentages below are then in 320×180 logical canvas space. */
+.vpad-lanes {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(100vw, calc(100vh * 320 / 180));
+    aspect-ratio: 320 / 180;
+    display: none;
+}
+
+.vpad--lanes .vpad-lanes {
+    display: block;
+}
+
+.vpad--lanes .vpad-stick,
+.vpad--lanes .vpad-buttons {
+    display: none;
+}
+
+/* Columns centered on the dance lanes: laneX = 106/142/178/214 of 320
+   (DanceMiniGame.laneX, LANE_SPACING 36px → 11.25% wide), spanning the
+   band around the receptor line (y = 148/180) down to the bottom edge. */
+.vpad-lane {
+    position: absolute;
+    top: 60%;
+    bottom: 0;
+    width: 11.25%;
+    border-radius: calc(var(--px) * 2px);
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    color: rgba(255, 255, 255, 0.4);
+    font-size: calc(var(--px) * 12px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    pointer-events: auto;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.vpad-lane[data-down='true'] {
+    background: rgba(255, 255, 255, 0.35);
+}
+
+.vpad-lane-0 {
+    left: calc(33.125% - 5.625%);
+}
+
+.vpad-lane-1 {
+    left: calc(44.375% - 5.625%);
+}
+
+.vpad-lane-2 {
+    left: calc(55.625% - 5.625%);
+}
+
+.vpad-lane-3 {
+    left: calc(66.875% - 5.625%);
+}

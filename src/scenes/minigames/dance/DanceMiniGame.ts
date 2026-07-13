@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../../config/dimensions';
 import { inputService } from '../../../input/InputService';
+import { setVirtualPadLaneMode } from '../../../input/VirtualPadSource';
 import { i18nService } from '../../../services/I18nService';
 import { createOverlayElement } from '../../../ui/domOverlay';
 import { runFailFlow } from '../failFlow';
@@ -9,16 +10,18 @@ import { MiniGameScene } from '../MiniGameScene';
 import { generateBeatMap } from './beatmap';
 import { GOOD_WINDOW_MS, SCORE, judge, winScore } from './judgment';
 import type { Judgment } from './judgment';
-import { LANES, LANE_ROTATION, directionToLane } from './lanes';
+import { LANES, LANE_ROTATION } from './lanes';
 import type { Lane } from './lanes';
 
 /**
  * Dance Beat — DDR-style rhythm run. Press A to start the music; arrow notes
  * fall from the top toward the receptor line near the bottom and the player
- * presses the matching direction (keyboard arrows/WASD or joystick flicks) as
- * each note crosses it. The whole song always plays (no mid-run failure); at
- * the end, score >= threshold wins, below runs the shared fail flow
- * (../failFlow.ts).
+ * hits the matching lane (keyboard arrows/WASD as four discrete keys; on
+ * touch, four tap zones under the lanes) as each note crosses it. Lane input
+ * is InputService's lane mode (§3.10) — enabled for the run, switched off
+ * before the fail flow so touch players get their A button back. The whole
+ * song always plays (no mid-run failure); at the end, score >= threshold
+ * wins, below runs the shared fail flow (../failFlow.ts).
  * Note times come from the beat map (./beatmap.ts) and are judged/scored by
  * ./judgment.ts. Timing is driven by the music's own clock (seek), falling
  * back to the frame clock while no track exists — drop one at
@@ -60,13 +63,13 @@ export class DanceMiniGame extends MiniGameScene {
     private endMs = 0;
     private score = 0;
     private notes: RuntimeNote[] = [];
-    private heldLane: Lane | null = null;
     private music: Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound | null = null;
     private receptors!: Record<Lane, Phaser.GameObjects.Sprite>;
     private promptEl: HTMLElement | null = null;
     private scoreEl: HTMLElement | null = null;
     private failFlowCleanup: (() => void) | null = null;
     private offStart: (() => void) | null = null;
+    private offLane: (() => void) | null = null;
 
     constructor() {
         super(SceneKeys.Dance);
@@ -90,10 +93,10 @@ export class DanceMiniGame extends MiniGameScene {
         this.endMs = 0;
         this.score = 0;
         this.notes = [];
-        this.heldLane = null;
         this.music = null;
         this.scoreEl = null;
         this.failFlowCleanup = null;
+        this.disableLaneInput(); // defensive — a restart must never inherit lane mode
 
         this.cameras.main.setBackgroundColor('#2a1d3d');
         this.ensureArrowTexture();
@@ -119,6 +122,7 @@ export class DanceMiniGame extends MiniGameScene {
             this.promptEl?.remove();
             this.scoreEl?.remove();
             this.offStart?.();
+            this.disableLaneInput();
             this.failFlowCleanup?.();
             // Sounds are game-wide, not scene-owned — stop and drop this
             // run's instance or restarts would pile them up.
@@ -131,7 +135,6 @@ export class DanceMiniGame extends MiniGameScene {
             return;
         }
         this.advanceClock(delta);
-        this.detectLanePress();
         this.driveNotes();
 
         if (this.songTimeMs >= this.endMs) {
@@ -143,6 +146,16 @@ export class DanceMiniGame extends MiniGameScene {
         this.state = 'running';
         this.promptEl?.remove();
         this.promptEl = null;
+
+        // Per-lane input for the run (§3.10 lane mode): arrows/WASD become
+        // four discrete keys; the touch pad swaps for tap zones on the lanes.
+        inputService.setLaneMode(true);
+        setVirtualPadLaneMode(true);
+        this.offLane = inputService.onLanePress((lane) => {
+            if (this.state === 'running') {
+                this.onLanePress(lane);
+            }
+        });
 
         // Score readout (text → DOM overlay, §3.8), digits only so no i18n.
         this.scoreEl = createOverlayElement('dance-score');
@@ -187,16 +200,12 @@ export class DanceMiniGame extends MiniGameScene {
         this.songTimeMs += delta;
     }
 
-    /**
-     * Turns the analog direction into press edges: a press is the quantized
-     * lane changing (neutral→lane or lane→other lane) — see ./lanes.ts.
-     */
-    private detectLanePress(): void {
-        const lane = directionToLane(inputService.direction());
-        if (lane !== null && lane !== this.heldLane) {
-            this.onLanePress(lane);
-        }
-        this.heldLane = lane;
+    /** OFF on shutdown and BEFORE runFailFlow — the fail-video skip is an A-press. */
+    private disableLaneInput(): void {
+        this.offLane?.();
+        this.offLane = null;
+        inputService.setLaneMode(false);
+        setVirtualPadLaneMode(false);
     }
 
     private onLanePress(lane: Lane): void {
@@ -265,6 +274,7 @@ export class DanceMiniGame extends MiniGameScene {
     private finishRun(): void {
         this.state = 'ended';
         this.music?.stop();
+        this.disableLaneInput();
 
         if (this.score >= winScore(this.notes.length)) {
             this.time.delayedCall(WIN_BEAT_MS, () => this.completeActivity());

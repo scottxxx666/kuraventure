@@ -28,7 +28,7 @@ export const BPM = 100;
 export const LEAD_IN_MS = 2400;
 /** Note-free tail so the last note is judged before the run ends, ms. */
 export const TAIL_MS = 1200;
-/** Same-lane repeats closer than this are re-rolled (the joystick is slow to re-flick). */
+/** Same-lane repeats closer than this are re-rolled (fast jacks are too hard for a casual game). */
 const JACK_GAP_MS = 400;
 
 function lerp(from: number, to: number, t: number): number {

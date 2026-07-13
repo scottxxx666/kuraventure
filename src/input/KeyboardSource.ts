@@ -1,8 +1,16 @@
-import type { InputService, PadButton } from './InputService';
+import type { InputService, PadButton, PadLane } from './InputService';
 
 const SOURCE = 'keyboard';
 
 type Axis = 'left' | 'right' | 'up' | 'down';
+
+/** Lane mode (§3.10): each axis is a discrete lane key, DDR order ← ↓ ↑ →. */
+const AXIS_LANE: Record<Axis, PadLane> = {
+    left: 0,
+    down: 1,
+    up: 2,
+    right: 3
+};
 
 // WASD and arrows are tracked separately so twin-stick mode (§3.10) can
 // split them into the two channels; in normal mode their union feeds
@@ -37,7 +45,9 @@ function axisVector(axes: Set<Axis>): { x: number; y: number } {
 
 /**
  * Desktop source: arrows/WASD for direction, Z/Space → A, X/Enter → B.
- * In twin-stick mode WASD feeds channel 1 and arrows channel 2.
+ * In twin-stick mode WASD feeds channel 1 and arrows channel 2. In lane
+ * mode arrows/WASD stop feeding direction and become four independent
+ * lane keys (so chords work and rolling between keys can't misfire).
  * Listens on window (not a scene's keyboard plugin) so one instance
  * outlives scene transitions.
  */
@@ -73,13 +83,19 @@ export class KeyboardSource {
             this.input.setButtonDown(SOURCE, button, down);
         }
         if (axis) {
+            // Held sets are tracked even in lane mode so direction state is
+            // accurate again the moment the mode toggles back off.
             const set = wasdAxis ? this.heldWasd : this.heldArrows;
             if (down) {
                 set.add(axis);
             } else {
                 set.delete(axis);
             }
-            this.publish();
+            if (this.input.isLaneMode()) {
+                this.input.setLaneDown(SOURCE, AXIS_LANE[axis], down);
+            } else {
+                this.publish();
+            }
         }
     }
 

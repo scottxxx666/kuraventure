@@ -1,9 +1,11 @@
 import { getOverlayRoot } from '../ui/domOverlay';
-import type { InputService, PadButton } from './InputService';
+import type { InputService, PadButton, PadLane } from './InputService';
 
 const SOURCE = 'virtualpad';
 /** Knob travel as a fraction of the stick base radius. */
 const KNOB_TRAVEL = 0.5;
+/** Tap-zone glyphs in lane order ← ↓ ↑ → (DOM text — §3.8 only bans in-canvas text). */
+const LANE_GLYPHS = ['◄', '▼', '▲', '►'] as const;
 
 export function isTouchDevice(): boolean {
     return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -14,12 +16,15 @@ export function isTouchDevice(): boolean {
  * bottom-right, rendered on the DOM overlay. Hidden by default — WorldScene
  * (and later mini-games) show it; menus and videos keep it hidden.
  * Twin-stick mode (cart-carry's signed-off exception) swaps the A/B buttons
- * for a second joystick bottom-right feeding channel 2.
+ * for a second joystick bottom-right feeding channel 2. Lane mode (dance's
+ * signed-off exception) swaps the whole pad for four tap zones aligned under
+ * the note lanes, feeding lane presses.
  */
 export class VirtualPadSource {
     private readonly root: HTMLDivElement;
     private readonly stickReleases: (() => void)[] = [];
     private readonly buttonReleases: (() => void)[] = [];
+    private readonly laneReleases: (() => void)[] = [];
 
     constructor(private readonly input: InputService) {
         this.root = document.createElement('div');
@@ -34,9 +39,16 @@ export class VirtualPadSource {
         buttons.appendChild(this.makeButton('B'));
         buttons.appendChild(this.makeButton('A'));
 
+        const lanes = document.createElement('div');
+        lanes.className = 'vpad-lanes';
+        for (const lane of [0, 1, 2, 3] as const) {
+            lanes.appendChild(this.makeLaneZone(lane));
+        }
+
         this.root.appendChild(left);
         this.root.appendChild(right);
         this.root.appendChild(buttons);
+        this.root.appendChild(lanes);
         getOverlayRoot().appendChild(this.root);
     }
 
@@ -58,13 +70,22 @@ export class VirtualPadSource {
         this.releaseAll();
     }
 
+    /**
+     * Swap the whole pad (joystick + A/B) for the four lane tap zones (and
+     * back). Force-releases for the same reason as setTwinStick.
+     */
+    setLaneMode(enabled: boolean): void {
+        this.root.classList.toggle('vpad--lanes', enabled);
+        this.releaseAll();
+    }
+
     destroy(): void {
         this.releaseAll();
         this.root.remove();
     }
 
     private releaseAll(): void {
-        for (const release of [...this.stickReleases, ...this.buttonReleases]) {
+        for (const release of [...this.stickReleases, ...this.buttonReleases, ...this.laneReleases]) {
             release();
         }
     }
@@ -138,6 +159,27 @@ export class VirtualPadSource {
         el.addEventListener('pointercancel', release);
         return el;
     }
+
+    /** One pointer per zone, so two-finger chords register naturally. */
+    private makeLaneZone(lane: PadLane): HTMLDivElement {
+        const el = document.createElement('div');
+        el.className = `vpad-lane vpad-lane-${lane}`;
+        el.textContent = LANE_GLYPHS[lane];
+        const release = (): void => {
+            delete el.dataset.down;
+            this.input.setLaneDown(SOURCE, lane, false);
+        };
+        this.laneReleases.push(release);
+        el.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            el.setPointerCapture(e.pointerId);
+            el.dataset.down = 'true';
+            this.input.setLaneDown(SOURCE, lane, true);
+        });
+        el.addEventListener('pointerup', release);
+        el.addEventListener('pointercancel', release);
+        return el;
+    }
 }
 
 let pad: VirtualPadSource | null = null;
@@ -157,4 +199,9 @@ export function setVirtualPadVisible(visible: boolean): void {
 /** No-op on non-touch devices. Twin-stick scenes enable on create, disable on shutdown/fail. */
 export function setVirtualPadTwinStick(enabled: boolean): void {
     pad?.setTwinStick(enabled);
+}
+
+/** No-op on non-touch devices. The dance scene enables during a run, disables on end/fail/shutdown. */
+export function setVirtualPadLaneMode(enabled: boolean): void {
+    pad?.setLaneMode(enabled);
 }

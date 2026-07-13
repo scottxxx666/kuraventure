@@ -107,6 +107,85 @@ describe('InputService second channel (twin-stick)', () => {
     });
 });
 
+describe('InputService lane mode', () => {
+    it('onLanePress fires once per down edge with the pressed lane', () => {
+        const input = new InputService();
+        const cb = vi.fn();
+        input.onLanePress(cb);
+        input.setLaneMode(true);
+        input.setLaneDown('keyboard', 2, true);
+        input.setLaneDown('keyboard', 2, true); // held, no new edge
+        expect(cb).toHaveBeenCalledTimes(1);
+        expect(cb).toHaveBeenCalledWith(2);
+        input.setLaneDown('keyboard', 2, false);
+        input.setLaneDown('keyboard', 2, true);
+        expect(cb).toHaveBeenCalledTimes(2);
+    });
+
+    it('simultaneous different lanes (a chord) each fire', () => {
+        const input = new InputService();
+        const cb = vi.fn();
+        input.onLanePress(cb);
+        input.setLaneMode(true);
+        input.setLaneDown('virtualpad', 0, true);
+        input.setLaneDown('virtualpad', 3, true);
+        expect(cb.mock.calls).toEqual([[0], [3]]);
+    });
+
+    it('a second source pressing an already-held lane is not a new edge', () => {
+        const input = new InputService();
+        const cb = vi.fn();
+        input.onLanePress(cb);
+        input.setLaneMode(true);
+        input.setLaneDown('keyboard', 1, true);
+        input.setLaneDown('virtualpad', 1, true);
+        expect(cb).toHaveBeenCalledTimes(1);
+        // Releasing only one source keeps the lane down — still no edge on re-press.
+        input.setLaneDown('virtualpad', 1, false);
+        input.setLaneDown('virtualpad', 1, true);
+        expect(cb).toHaveBeenCalledTimes(1);
+    });
+
+    it('setLaneMode toggles the flag and clears held lanes and both direction channels', () => {
+        const input = new InputService();
+        const cb = vi.fn();
+        input.onLanePress(cb);
+        expect(input.isLaneMode()).toBe(false);
+        input.setDirection('keyboard', 1, 0);
+        input.setDirection2('keyboard', 0, 1);
+        input.setLaneMode(true);
+        expect(input.isLaneMode()).toBe(true);
+        expect(input.direction()).toEqual({ x: 0, y: 0 });
+        expect(input.direction2()).toEqual({ x: 0, y: 0 });
+        input.setLaneDown('keyboard', 0, true);
+        input.setLaneMode(false);
+        expect(input.isLaneMode()).toBe(false);
+        // The cleared hold is gone — re-enabling and pressing again is a fresh edge.
+        input.setLaneMode(true);
+        input.setLaneDown('keyboard', 0, true);
+        expect(cb).toHaveBeenCalledTimes(2);
+    });
+
+    it('the toggle leaves button state untouched', () => {
+        const input = new InputService();
+        input.setButtonDown('keyboard', 'A', true);
+        input.setLaneMode(true);
+        expect(input.isDown('A')).toBe(true);
+    });
+
+    it('onLanePress unsubscribe stops further calls', () => {
+        const input = new InputService();
+        const cb = vi.fn();
+        const off = input.onLanePress(cb);
+        input.setLaneMode(true);
+        input.setLaneDown('keyboard', 3, true);
+        off();
+        input.setLaneDown('keyboard', 3, false);
+        input.setLaneDown('keyboard', 3, true);
+        expect(cb).toHaveBeenCalledTimes(1);
+    });
+});
+
 describe('InputService buttons', () => {
     it('isDown reflects any source holding the button', () => {
         const input = new InputService();

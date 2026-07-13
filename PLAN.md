@@ -482,6 +482,15 @@ export interface GameInput {
   across the toggle is dead until re-pressed). The enabling scene must switch the mode
   OFF on SHUTDOWN **and before `runFailFlow`** — the fail-video skip is an A-press, so
   touch players need their buttons back.
+- **Lane mode** (user-signed-off exception, same shape as twin-stick; currently used
+  only by the dance mini-game): `inputService.setLaneMode(true)` +
+  `setVirtualPadLaneMode(true)` turn direction input into four discrete lane keys
+  (DDR order ← ↓ ↑ →) — keyboard arrows/WASD each map to a lane, the virtual pad
+  swaps joystick + A/B for four tap zones aligned under the note lanes (canvas-aligned
+  CSS in `.vpad-lanes`). Scenes subscribe via `inputService.onLanePress(cb)`; edges
+  are per-source like buttons, so chords (two lanes at once) work. Toggling clears
+  held-lane and direction state. Same OFF rule as twin-stick: SHUTDOWN **and before
+  `runFailFlow`**.
 - **Landscape only** (confirmed): `ui/rotateOverlay.ts` covers the screen with a
   localized "rotate your device" prompt while a touch device is portrait (pure CSS
   media query toggles it). The start-game gesture also enters browser fullscreen and,

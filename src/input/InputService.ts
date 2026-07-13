@@ -6,6 +6,8 @@
 
 export type Vec2 = { x: number; y: number };
 export type PadButton = 'A' | 'B';
+/** Rhythm-lane index (DDR order ← ↓ ↑ →) — lane mode only (§3.10). */
+export type PadLane = 0 | 1 | 2 | 3;
 
 export interface GameInput {
     /** Movement vector, length clamped to 1 (keys give unit directions, joystick may be sub-unit). */
@@ -15,6 +17,8 @@ export interface GameInput {
     isDown(button: PadButton): boolean;
     /** Fires on the down edge only. Returns an unsubscribe function. */
     onPress(button: PadButton, cb: () => void): () => void;
+    /** Lane down edges — silent unless lane mode is on (§3.10). Returns an unsubscribe function. */
+    onLanePress(cb: (lane: PadLane) => void): () => void;
 }
 
 /**
@@ -50,17 +54,23 @@ class DirectionChannel {
  * channels plus buttons OR-ed across sources with edge-detected press
  * events. Channel 2 is only fed while twin-stick mode is on (the signed-off
  * exception for cart-carry): keyboard splits WASD/arrows and the virtual
- * pad swaps its A/B buttons for a second stick.
+ * pad swaps its A/B buttons for a second stick. Lane mode (the signed-off
+ * exception for the dance mini-game) works the same way: keyboard turns
+ * arrows/WASD into four discrete lane keys and the virtual pad swaps its
+ * joystick + A/B for four tap zones, both feeding edge-detected lane presses.
  */
 export class InputService implements GameInput {
     private readonly ch1 = new DirectionChannel();
     private readonly ch2 = new DirectionChannel();
     private twinStick = false;
+    private laneMode = false;
     private readonly downButtons = new Map<string, Set<PadButton>>();
+    private readonly downLanes = new Map<string, Set<PadLane>>();
     private readonly pressListeners: Record<PadButton, Set<() => void>> = {
         A: new Set(),
         B: new Set()
     };
+    private readonly lanePressListeners = new Set<(lane: PadLane) => void>();
 
     /** Called by sources whenever their direction state changes. */
     setDirection(source: string, x: number, y: number): void {
@@ -85,6 +95,43 @@ export class InputService implements GameInput {
 
     isTwinStick(): boolean {
         return this.twinStick;
+    }
+
+    /**
+     * Toggles lane mode and clears held-lane state plus both direction
+     * channels — same trade-off as setTwinStick: input held across the
+     * toggle stays dead until re-pressed (scenes toggle at transitions).
+     */
+    setLaneMode(enabled: boolean): void {
+        this.laneMode = enabled;
+        this.downLanes.clear();
+        this.ch1.clear();
+        this.ch2.clear();
+    }
+
+    isLaneMode(): boolean {
+        return this.laneMode;
+    }
+
+    /** Called by sources on lane down/up while lane mode is on. */
+    setLaneDown(source: string, lane: PadLane, down: boolean): void {
+        let set = this.downLanes.get(source);
+        if (!set) {
+            set = new Set();
+            this.downLanes.set(source, set);
+        }
+        const wasDown = this.isLaneDown(lane);
+        if (down) {
+            set.add(lane);
+        } else {
+            set.delete(lane);
+        }
+        if (!wasDown && this.isLaneDown(lane)) {
+            // Copy so a listener subscribing/unsubscribing mid-press doesn't hear this press.
+            for (const cb of [...this.lanePressListeners]) {
+                cb(lane);
+            }
+        }
     }
 
     /** Called by sources on button down/up. */
@@ -125,9 +172,23 @@ export class InputService implements GameInput {
         return false;
     }
 
+    private isLaneDown(lane: PadLane): boolean {
+        for (const set of this.downLanes.values()) {
+            if (set.has(lane)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     onPress(button: PadButton, cb: () => void): () => void {
         this.pressListeners[button].add(cb);
         return () => this.pressListeners[button].delete(cb);
+    }
+
+    onLanePress(cb: (lane: PadLane) => void): () => void {
+        this.lanePressListeners.add(cb);
+        return () => this.lanePressListeners.delete(cb);
     }
 }
 
