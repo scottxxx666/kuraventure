@@ -17,7 +17,7 @@ body {
 
 /* DOM overlay above the canvas (src/ui/domOverlay.ts); interactive children
    opt back into pointer events.
-   --px: CSS pixels per logical canvas pixel (set by initOverlayScale).
+   --px: CSS px per unit of the 320×180 pixel-font grid (set by initOverlayScale).
    --ui-font: the active locale's pixel-font flavor (set by ui/fonts.ts).
    Pixel-crisp text (PLAN.md §3.8): sizes are integer multiples of the font's
    12px grid via calc(var(--px) * Npx), smoothing disabled, no soft shadows. */
@@ -370,14 +370,14 @@ html:lang(ja) #ui-overlay {
    dance mini-game): four tap zones replace the joystick + A/B buttons.
    The overlay covers the window but the canvas is Scale.FIT + CENTER_BOTH
    (letterboxed), so the wrapper reproduces the canvas rect in pure CSS —
-   zone percentages below are then in 320×180 logical canvas space. */
+   zone percentages below are then in 1280×720 canvas space. */
 .vpad-lanes {
     position: absolute;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    width: min(100vw, calc(100vh * 320 / 180));
-    aspect-ratio: 320 / 180;
+    width: min(100vw, calc(100vh * 1280 / 720));
+    aspect-ratio: 1280 / 720;
     display: none;
 }
 
@@ -390,9 +390,9 @@ html:lang(ja) #ui-overlay {
     display: none;
 }
 
-/* Columns centered on the dance lanes: laneX = 106/142/178/214 of 320
-   (DanceMiniGame.laneX, LANE_SPACING 36px → 11.25% wide), spanning the
-   band around the receptor line (y = 148/180) down to the bottom edge. */
+/* Columns centered on the dance lanes: laneX = 424/568/712/856 of 1280
+   (DanceMiniGame.laneX, LANE_SPACING 144px → 11.25% wide), spanning the
+   band around the receptor line (y = 592/720) down to the bottom edge. */
 .vpad-lane {
     position: absolute;
     top: 60%;

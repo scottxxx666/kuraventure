@@ -7,7 +7,6 @@ import { i18nService } from '../../../services/I18nService';
 import { createOverlayElement } from '../../../ui/domOverlay';
 import { runFailFlow } from '../failFlow';
 import { SceneKeys } from '../../keys';
-import { HUD_OFFSET_X, HUD_OFFSET_Y } from '../../pixelCamera';
 import { MiniGameScene } from '../MiniGameScene';
 import { difficultyFor } from './difficulty';
 import type { Difficulty } from './difficulty';
@@ -50,28 +49,28 @@ import {
 const WIN_BEAT_MS = 300; // pause on the full bar before completing
 
 const CARRIER_HITBOX = 0.7; // body shrunk vs the visible sprite (touch fairness)
-const CART_THICKNESS = 8;
-const SENSOR_W = 16; // cart hit sensors sampled along the segment
-const SENSOR_H = 8;
-const CARRIER_MIN_X = 12;
-const CARRIER_MAX_X = LEVEL_W - 12;
+const CART_THICKNESS = 32;
+const SENSOR_W = 64; // cart hit sensors sampled along the segment
+const SENSOR_H = 32;
+const CARRIER_MIN_X = 48;
+const CARRIER_MAX_X = LEVEL_W - 48;
 
-const SPIKE_W = 16;
+const SPIKE_W = 64;
 const SPIKE_HITBOX = 0.85;
-const GATE_EDGE_MARGIN = 4; // min spike height a gate keeps on each side
-const PIPE_W = 16;
-const PIPE_H = 20;
-const PLANT_W = 12;
-const PLANT_H = 36;
-const PLANT_PEEK_H = 8; // visible height during the warning phase
+const GATE_EDGE_MARGIN = 16; // min spike height a gate keeps on each side
+const PIPE_W = 64;
+const PIPE_H = 80;
+const PLANT_W = 48;
+const PLANT_H = 144;
+const PLANT_PEEK_H = 32; // visible height during the warning phase
 const PLANT_WARN_TINT = 0xffe066;
 
 const INPUT_DEADZONE = 0.3;
 const PROGRESS_START_X = (BACK_START.x + FRONT_START.x) / 2;
 
-const BAR_W = 120;
-const BAR_H = 5;
-const BAR_Y = 8;
+const BAR_W = 480;
+const BAR_H = 20;
+const BAR_Y = 32;
 
 const TEX_CARRIER = 'cart-carry-carrier';
 const TEX_CART = 'cart-carry-cart';
@@ -142,7 +141,7 @@ export class CartCarryMiniGame extends MiniGameScene {
         this.cameras.main.setBackgroundColor('#241a12');
         this.add.rectangle(LEVEL_W / 2, CEILING_Y / 2, LEVEL_W, CEILING_Y, 0x4a3626);
         this.add.rectangle(LEVEL_W / 2, (FLOOR_Y + GAME_HEIGHT) / 2, LEVEL_W, GAME_HEIGHT - FLOOR_Y, 0x4a3626);
-        this.add.rectangle(GOAL_X, GAME_HEIGHT / 2, 6, CORRIDOR_H, 0x8fd18f, 0.5);
+        this.add.rectangle(GOAL_X, GAME_HEIGHT / 2, 24, CORRIDOR_H, 0x8fd18f, 0.5);
 
         this.cart = this.add.image(PROGRESS_START_X, BACK_START.y, TEX_CART);
         this.back = this.createCarrier(BACK_START);
@@ -168,13 +167,13 @@ export class CartCarryMiniGame extends MiniGameScene {
         this.cameras.main.startFollow(this.followTarget, true, 0.15, 0.15);
 
         // Distance bar (game-scene UI, no text → Phaser, not DOM — §3.8).
-        // sf=0 objects need the HUD offset to land on screen (pixelCamera.ts).
+        // setScrollFactor(0) pins it to the screen as the camera scrolls.
         this.add
-            .rectangle(GAME_WIDTH / 2 + HUD_OFFSET_X, BAR_Y + HUD_OFFSET_Y, BAR_W + 2, BAR_H + 2)
-            .setStrokeStyle(1, 0xffffff)
+            .rectangle(GAME_WIDTH / 2, BAR_Y, BAR_W + 8, BAR_H + 8)
+            .setStrokeStyle(4, 0xffffff)
             .setScrollFactor(0);
         this.barFill = this.add
-            .rectangle(GAME_WIDTH / 2 - BAR_W / 2 + HUD_OFFSET_X, BAR_Y + HUD_OFFSET_Y, BAR_W, BAR_H, 0x8fd18f)
+            .rectangle(GAME_WIDTH / 2 - BAR_W / 2, BAR_Y, BAR_W, BAR_H, 0x8fd18f)
             .setOrigin(0, 0.5)
             .setScale(0, 1)
             .setScrollFactor(0);
@@ -216,8 +215,9 @@ export class CartCarryMiniGame extends MiniGameScene {
         }
 
         // Kinematic movement (no physics velocities): the loose-grip cart is
-        // then a simple position projection, and at <2 px/frame the arcade
-        // overlap (bodies re-sync from the game objects each step) is safe.
+        // then a simple position projection, and at ≈5.3 px/frame the arcade
+        // overlap (bodies re-sync from the game objects each step) stays safe
+        // against the 64px obstacles.
         const dt = delta / 1000;
         let bp = { x: this.back.x + d1.x * CARRIER_SPEED * dt, y: this.back.y + d1.y * CARRIER_SPEED * dt };
         let fp = { x: this.front.x + d2.x * CARRIER_SPEED * dt, y: this.front.y + d2.y * CARRIER_SPEED * dt };

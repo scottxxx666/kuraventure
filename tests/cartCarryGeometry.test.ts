@@ -11,60 +11,60 @@ const mid = (a: { x: number; y: number }, b: { x: number; y: number }): { x: num
 describe('cart-carry constrainSpan', () => {
     it('is a no-op when the distance is inside the range', () => {
         const a = { x: 0, y: 0 };
-        const b = { x: 100, y: 0 };
-        const [na, nb] = constrainSpan(a, b, 88, 136);
+        const b = { x: 400, y: 0 };
+        const [na, nb] = constrainSpan(a, b, 352, 544);
         expect(na).toEqual(a);
         expect(nb).toEqual(b);
     });
 
     it('is a no-op exactly on the bounds', () => {
-        const [na, nb] = constrainSpan({ x: 0, y: 0 }, { x: 136, y: 0 }, 88, 136);
-        expect(dist(na, nb)).toBe(136);
+        const [na, nb] = constrainSpan({ x: 0, y: 0 }, { x: 544, y: 0 }, 352, 544);
+        expect(dist(na, nb)).toBe(544);
         expect(na).toEqual({ x: 0, y: 0 });
     });
 
     it('pulls both points symmetrically onto maxD when stretched too far', () => {
         const a = { x: 0, y: 0 };
-        const b = { x: 200, y: 0 };
-        const [na, nb] = constrainSpan(a, b, 88, 136);
-        expect(dist(na, nb)).toBeCloseTo(136);
+        const b = { x: 800, y: 0 };
+        const [na, nb] = constrainSpan(a, b, 352, 544);
+        expect(dist(na, nb)).toBeCloseTo(544);
         expect(mid(na, nb)).toEqual(mid(a, b));
-        expect(na.x).toBeCloseTo(32);
-        expect(nb.x).toBeCloseTo(168);
+        expect(na.x).toBeCloseTo(128);
+        expect(nb.x).toBeCloseTo(672);
     });
 
     it('pushes both points symmetrically onto minD when squeezed too close', () => {
-        const a = { x: 100, y: 100 };
-        const b = { x: 140, y: 100 };
-        const [na, nb] = constrainSpan(a, b, 88, 136);
-        expect(dist(na, nb)).toBeCloseTo(88);
+        const a = { x: 400, y: 400 };
+        const b = { x: 560, y: 400 };
+        const [na, nb] = constrainSpan(a, b, 352, 544);
+        expect(dist(na, nb)).toBeCloseTo(352);
         expect(mid(na, nb)).toEqual(mid(a, b));
     });
 
     it('preserves the segment direction', () => {
         const a = { x: 0, y: 0 };
-        const b = { x: 120, y: 160 }; // dist 200, direction 3-4-5
-        const [na, nb] = constrainSpan(a, b, 88, 136);
-        expect(dist(na, nb)).toBeCloseTo(136);
-        expect((nb.y - na.y) / (nb.x - na.x)).toBeCloseTo(160 / 120);
+        const b = { x: 480, y: 640 }; // dist 800, direction 3-4-5
+        const [na, nb] = constrainSpan(a, b, 352, 544);
+        expect(dist(na, nb)).toBeCloseTo(544);
+        expect((nb.y - na.y) / (nb.x - na.x)).toBeCloseTo(640 / 480);
     });
 
     it('separates coincident points horizontally to minD around the midpoint', () => {
-        const [na, nb] = constrainSpan({ x: 50, y: 60 }, { x: 50, y: 60 }, 88, 136);
-        expect(na).toEqual({ x: 50 - 44, y: 60 });
-        expect(nb).toEqual({ x: 50 + 44, y: 60 });
-        expect(dist(na, nb)).toBe(88);
+        const [na, nb] = constrainSpan({ x: 200, y: 240 }, { x: 200, y: 240 }, 352, 544);
+        expect(na).toEqual({ x: 200 - 176, y: 240 });
+        expect(nb).toEqual({ x: 200 + 176, y: 240 });
+        expect(dist(na, nb)).toBe(352);
     });
 
     it('never mutates its inputs and returns fresh objects', () => {
         const a = { x: 0, y: 0 };
-        const b = { x: 200, y: 0 };
-        const [na, nb] = constrainSpan(a, b, 88, 136);
+        const b = { x: 800, y: 0 };
+        const [na, nb] = constrainSpan(a, b, 352, 544);
         expect(a).toEqual({ x: 0, y: 0 });
-        expect(b).toEqual({ x: 200, y: 0 });
+        expect(b).toEqual({ x: 800, y: 0 });
         expect(na).not.toBe(a);
         expect(nb).not.toBe(b);
-        const [ia, ib] = constrainSpan(a, { x: 100, y: 0 }, 88, 136);
+        const [ia, ib] = constrainSpan(a, { x: 400, y: 0 }, 352, 544);
         expect(ia).not.toBe(a);
         expect(ib).toBeDefined();
     });

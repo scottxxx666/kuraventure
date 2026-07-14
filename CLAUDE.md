@@ -22,10 +22,12 @@ designs; content only, no core changes).
   `yarn typecheck`, `yarn test` (vitest, tests in `tests/`). **The user runs all
   scripts manually — never run them yourself.**
 - Engine is **Phaser 3.90.0** (pinned; user re-confirmed staying on 3.x over the now
-  stable Phaser 4). All game logic/world space is **320×180**, rendered on a
-  **1280×720 canvas backing store** via zoom-4 cameras (`src/scenes/pixelCamera.ts`
-  — new in-canvas scenes must call `applyPixelCamera`, `setScrollFactor(0)` objects
-  need `HUD_OFFSET_X/Y`, in-canvas videos need `makeVideoSmooth`); `pixelArt: true`,
-  `Scale.FIT` (`src/config/gameConfig.ts`, PLAN.md §2).
+  stable Phaser 4). The game renders at a **native 1280×720 smooth-art canvas**:
+  world coordinates == canvas coordinates, no camera zoom, `pixelArt: false`. There
+  is no per-scene camera setup and no `pixelCamera.ts`; `setScrollFactor(0)` HUD
+  objects use plain screen coordinates. `Scale.FIT` (`src/config/gameConfig.ts`,
+  PLAN.md §2, `docs/option-b-smooth-art.md`). The DOM overlay's `--px` scale is
+  still computed from a 320×180 pixel-font grid (`UI_GRID_*` in
+  `src/config/dimensions.ts`).
 - Every Phaser scene is registered in `src/main.ts`; scene keys live in
   `src/scenes/keys.ts` — never use raw scene-key strings.

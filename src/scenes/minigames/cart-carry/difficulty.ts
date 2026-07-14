@@ -59,14 +59,14 @@ export function difficultyFor(zoneFraction: number, hardness = HARDNESS): Diffic
     // easy end, >1 skips ahead into it — never past the tuned endpoints.
     const t = clamp01(hardness <= 1 ? raw * hardness : 1 - (1 - raw) / hardness);
     return {
-        sectionGapPx: lerp(120, 72, t),
-        spikeMinH: lerp(40, 64, t),
-        spikeMaxH: lerp(72, 104, t),
+        sectionGapPx: lerp(480, 288, t),
+        spikeMinH: lerp(160, 256, t),
+        spikeMaxH: lerp(288, 416, t),
         slalomActive: t >= SLALOM_FROM,
         slalomChance: t < SLALOM_FROM ? 0 : lerp(0.25, 0.3, (t - SLALOM_FROM) / (1 - SLALOM_FROM)),
         gateActive: t >= GATE_FROM,
         gateChance: t < GATE_FROM ? 0 : lerp(0.2, 0.25, (t - GATE_FROM) / (1 - GATE_FROM)),
-        gateGapSize: lerp(84, 60, t),
+        gateGapSize: lerp(336, 240, t),
         piranhaActive: t >= PIRANHA_FROM,
         piranhaChance: t < PIRANHA_FROM ? 0 : lerp(0.25, 0.3, (t - PIRANHA_FROM) / (1 - PIRANHA_FROM)),
         piranhaHiddenMs: lerp(1200, 800, t),

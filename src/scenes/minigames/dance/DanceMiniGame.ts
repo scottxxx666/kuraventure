@@ -33,10 +33,10 @@ const WIN_BEAT_MS = 300; // pause on the final score before completing
 const END_TAIL_MS = 800; // judged-last-note → evaluation delay
 
 const APPROACH_MS = 1800; // a note is visible this long before its beat
-const HIT_Y = GAME_HEIGHT - 32; // receptor line
-const SPAWN_Y = -8; // notes enter from just above the screen
-const LANE_SPACING = 36;
-const ARROW_SIZE = 16;
+const HIT_Y = GAME_HEIGHT - 128; // receptor line
+const SPAWN_Y = -32; // notes enter from just above the screen
+const LANE_SPACING = 144;
+const ARROW_SIZE = 64;
 const FLASH_MS = 120;
 
 const IDLE_TINT = 0x666666;
@@ -310,7 +310,7 @@ export class DanceMiniGame extends MiniGameScene {
         const g = this.make.graphics({ x: 0, y: 0 }, false);
         g.fillStyle(0xffffff);
         g.fillTriangle(ARROW_SIZE / 2, 0, 0, ARROW_SIZE / 2, ARROW_SIZE, ARROW_SIZE / 2);
-        g.fillRect(ARROW_SIZE / 2 - 3, ARROW_SIZE / 2, 6, ARROW_SIZE / 2);
+        g.fillRect(ARROW_SIZE / 2 - 12, ARROW_SIZE / 2, 24, ARROW_SIZE / 2);
         g.generateTexture(TEX_ARROW, ARROW_SIZE, ARROW_SIZE);
         g.destroy();
     }

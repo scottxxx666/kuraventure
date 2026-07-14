@@ -9,10 +9,9 @@ import { i18nService } from '../services/I18nService';
 import { progressService } from '../services/ProgressService';
 import { createOverlayElement } from '../ui/domOverlay';
 import { SceneKeys } from './keys';
-import { applyPixelCamera } from './pixelCamera';
 
-const PLAYER_SPEED = 80; // px/s
-const TILE_SIZE = 16; // fallback size for point-object triggers
+const PLAYER_SPEED = 320; // px/s
+const TILE_SIZE = 64; // fallback size for point-object triggers
 const TOAST_MS = 2400; // pickup/blocked-exit feedback duration
 
 interface TriggerZone {
@@ -69,8 +68,6 @@ export class WorldScene extends Phaser.Scene {
     }
 
     create(): void {
-        // Before setBounds/startFollow — their initial clamp must see the zoom.
-        applyPixelCamera(this);
         this.ensurePlaceholderTextures();
 
         const map = this.make.tilemap({ key: this.stage.tilemapKey });
@@ -333,25 +330,25 @@ export class WorldScene extends Phaser.Scene {
             // 2 tiles side by side: index 0 floor, index 1 wall (matches the map's tileset).
             const g = this.make.graphics({}, false);
             g.fillStyle(0x3a5f3a);
-            g.fillRect(0, 0, 16, 16);
+            g.fillRect(0, 0, 64, 64);
             g.fillStyle(0x466e46);
-            g.fillRect(3, 3, 2, 2);
-            g.fillRect(11, 9, 2, 2);
+            g.fillRect(12, 12, 8, 8);
+            g.fillRect(44, 36, 8, 8);
             g.fillStyle(0x6b4a3a);
-            g.fillRect(16, 0, 16, 16);
+            g.fillRect(64, 0, 64, 64);
             g.fillStyle(0x51382c);
-            g.fillRect(16, 12, 16, 4);
-            g.generateTexture(TILES_TEXTURE, 32, 16);
+            g.fillRect(64, 48, 64, 16);
+            g.generateTexture(TILES_TEXTURE, 128, 64);
             g.destroy();
         }
         if (!this.textures.exists(PLAYER_TEXTURE)) {
             const g = this.make.graphics({}, false);
             g.fillStyle(0xf2d16b);
-            g.fillRect(0, 0, 12, 12);
+            g.fillRect(0, 0, 48, 48);
             g.fillStyle(0x2b2b2b);
-            g.fillRect(3, 3, 2, 2);
-            g.fillRect(7, 3, 2, 2);
-            g.generateTexture(PLAYER_TEXTURE, 12, 12);
+            g.fillRect(12, 12, 8, 8);
+            g.fillRect(28, 12, 8, 8);
+            g.generateTexture(PLAYER_TEXTURE, 48, 48);
             g.destroy();
         }
     }

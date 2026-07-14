@@ -22,8 +22,8 @@ export function difficultyFor(barFraction: number): Difficulty {
     const tier = Math.min(3, Math.floor(clamped * 4));
     return {
         tier,
-        fallSpeedMin: 40 + tier * 20,
-        fallSpeedMax: 90 + tier * 25,
+        fallSpeedMin: 160 + tier * 80,
+        fallSpeedMax: 360 + tier * 100,
         pizzasPerTick: PIZZAS_PER_TICK[tier],
         bossActive: tier >= 3
     };

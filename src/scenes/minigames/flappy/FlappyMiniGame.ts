@@ -23,29 +23,29 @@ import type { Difficulty } from './difficulty';
 const SURVIVE_MS = 60_000; // survive this long to win
 const WIN_BEAT_MS = 300; // pause on the full bar before completing
 
-const PLAYER_X = 64;
-const GRAVITY_Y = 600; // px/s²
-const FLAP_VELOCITY = -180; // px/s upward per A press
+const PLAYER_X = 256;
+const GRAVITY_Y = 2400; // px/s²
+const FLAP_VELOCITY = -720; // px/s upward per A press
 const PLAYER_HITBOX = 0.7; // body shrunk vs the visible sprite (touch fairness)
-const HOVER_VELOCITY = 15; // gentle pre-start bob, px/s
+const HOVER_VELOCITY = 60; // gentle pre-start bob, px/s
 
-const GATE_SEGMENT = 32; // square segment size of a gate column
-const GATE_EDGE_MARGIN = 8; // min distance of the gap edge from floor/ceiling
-const MOVER_AMPLITUDE = 18; // px a moving gate's gap travels up/down
+const GATE_SEGMENT = 128; // square segment size of a gate column
+const GATE_EDGE_MARGIN = 32; // min distance of the gap edge from floor/ceiling
+const MOVER_AMPLITUDE = 72; // px a moving gate's gap travels up/down
 const MOVER_PERIOD_MS = 2200;
-const BOB_AMPLITUDE = 12;
+const BOB_AMPLITUDE = 48;
 const BOB_PERIOD_MS = 1600;
-const SWEEPER_EXTRA_VX = 40; // sweepers outrun the scroll by this much, px/s
-const SWEEPER_VY = 65; // vertical crossing speed, px/s
-const CULL_MARGIN = 120; // obstacles die this far off-screen
+const SWEEPER_EXTRA_VX = 160; // sweepers outrun the scroll by this much, px/s
+const SWEEPER_VY = 260; // vertical crossing speed, px/s
+const CULL_MARGIN = 480; // obstacles die this far off-screen
 
-// Logical display sizes (the placeholder photos are much larger).
-const PLAYER_SIZE = 24;
-const FLOATER_SIZE = 24;
-const SWEEPER_SIZE = 32;
-const BAR_W = 120;
-const BAR_H = 5;
-const BAR_Y = 8;
+// Display sizes on the native 1280×720 canvas (the placeholder photos are much larger).
+const PLAYER_SIZE = 96;
+const FLOATER_SIZE = 96;
+const SWEEPER_SIZE = 128;
+const BAR_W = 480;
+const BAR_H = 20;
+const BAR_Y = 32;
 
 const TEX_PLAYER = 'flappy-player';
 const TEX_PIPE = 'flappy-pipe';
@@ -112,8 +112,8 @@ export class FlappyMiniGame extends MiniGameScene {
 
         // Survival-timer bar (game-scene UI, no text → Phaser, not DOM — §3.8).
         this.add
-            .rectangle(GAME_WIDTH / 2, BAR_Y, BAR_W + 2, BAR_H + 2)
-            .setStrokeStyle(1, 0xffffff);
+            .rectangle(GAME_WIDTH / 2, BAR_Y, BAR_W + 8, BAR_H + 8)
+            .setStrokeStyle(4, 0xffffff);
         this.barFill = this.add
             .rectangle(GAME_WIDTH / 2 - BAR_W / 2, BAR_Y, BAR_W, BAR_H, 0x8fd18f)
             .setOrigin(0, 0.5)

@@ -3,7 +3,6 @@ import type { ActivityRef } from '../../config/stages';
 import { eventBus } from '../../core/EventBus';
 import { GameClock } from '../../subtitles/GameClock';
 import { subtitleEngine } from '../../subtitles/SubtitleEngine';
-import { applyPixelCamera } from '../pixelCamera';
 
 /** Scene data FlowDirector passes when launching a mini-game. */
 export interface MiniGameData {
@@ -15,8 +14,7 @@ export interface MiniGameData {
  * THE mini-game contract (PLAN.md §3.3). Subclasses are otherwise unconstrained
  * (own physics, tilemaps) but MUST read player input only through InputService
  * and MUST call completeActivity() exactly once when the player finishes.
- * init() applies the zoom-4 pixel camera (pixelCamera.ts), so subclasses work
- * purely in 320×180 logical coordinates.
+ * Subclasses work in native 1280×720 canvas coordinates.
  */
 export abstract class MiniGameScene extends Phaser.Scene {
     protected activity!: ActivityRef;
@@ -32,8 +30,6 @@ export abstract class MiniGameScene extends Phaser.Scene {
         this.activity = data.activity;
         this.flagId = data.flagId;
         this.completed = false; // the same scene instance is reused across launches
-        // In init() so the zoom precedes any setBounds/startFollow in create().
-        applyPixelCamera(this);
     }
 
     /**

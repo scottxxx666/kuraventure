@@ -1,19 +1,21 @@
 import Phaser from 'phaser';
-import { CANVAS_HEIGHT, CANVAS_WIDTH, GAME_HEIGHT, GAME_WIDTH } from './dimensions';
+import { GAME_HEIGHT, GAME_WIDTH } from './dimensions';
 
 /** Scene list is provided by main.ts, which registers every scene. */
 export const gameConfig: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
-    width: CANVAS_WIDTH,
-    height: CANVAS_HEIGHT,
+    width: GAME_WIDTH,
+    height: GAME_HEIGHT,
     parent: 'game-container',
     backgroundColor: '#000000',
-    pixelArt: true,
+    // Smooth-art canvas, not pixel art — kept explicit; see
+    // docs/option-b-smooth-art.md.
+    pixelArt: false,
     physics: {
         default: 'arcade',
-        // Default world bounds stay in logical 320×180 space (Phaser would
-        // otherwise size them to the canvas backing store). Scenes with larger
-        // worlds (WorldScene, cart-carry) set their own bounds explicitly.
+        // Default world bounds match the native 1280×720 canvas (one screen).
+        // Scenes with larger worlds (WorldScene, cart-carry) set their own
+        // bounds explicitly.
         arcade: {
             width: GAME_WIDTH,
             height: GAME_HEIGHT

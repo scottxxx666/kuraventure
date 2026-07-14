@@ -1,19 +1,21 @@
 /**
- * Logical (world) resolution vs canvas backing store.
+ * Native canvas resolution.
  *
- * All game logic, physics, and pixel art live in 320×180 world space, but the
- * canvas backing store is 1280×720: every in-canvas scene applies a zoom-4
- * camera (src/scenes/pixelCamera.ts), so pixel art renders as crisp 4×4 blocks
- * while in-canvas video textures rasterize at up to 720p instead of being
- * crushed to 320×180 (PLAN.md §2). Scale.FIT letterboxes the 16:9 canvas;
- * phones letterbox slightly (most are 19.5:9).
+ * The game renders at a native 1280×720 smooth-art canvas: world coordinates
+ * == canvas coordinates, no camera zoom, `pixelArt: false` (PLAN.md §2,
+ * docs/option-b-smooth-art.md). Scale.FIT letterboxes the 16:9 canvas; phones
+ * letterbox slightly (most are 19.5:9).
  * Lives apart from gameConfig so DOM/service modules (and their unit tests)
  * can use it without importing Phaser.
  */
-export const GAME_WIDTH = 320;
-export const GAME_HEIGHT = 180;
+export const GAME_WIDTH = 1280;
+export const GAME_HEIGHT = 720;
 
-/** Canvas pixels per world pixel (pixel art renders as ZOOM×ZOOM blocks). */
-export const CAMERA_ZOOM = 4;
-export const CANVAS_WIDTH = GAME_WIDTH * CAMERA_ZOOM; // 1280
-export const CANVAS_HEIGHT = GAME_HEIGHT * CAMERA_ZOOM; // 720
+/**
+ * The pixel-font grid the DOM overlay's integer `--px` scale is computed from
+ * (src/ui/domOverlay.ts) — intentionally NOT the canvas size. The Fusion Pixel
+ * 12px font stays sized in multiples of this 320×180 grid, so DOM text keeps
+ * today's crisp integer scaling independent of the native canvas resolution.
+ */
+export const UI_GRID_WIDTH = 320;
+export const UI_GRID_HEIGHT = 180;

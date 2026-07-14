@@ -15,24 +15,24 @@ import { difficultyFor } from './difficulty';
  * public/assets/images/pizza-run/README.md.
  */
 
-const PLAYER_SPEED = 140; // px/s left/right
+const PLAYER_SPEED = 560; // px/s left/right
 const BAR_TARGET = 20; // dumplings to fill the bar
 const DUMPLING_TICK_MS = 1000;
 const PIZZA_TICK_MS = 1200;
-const ITEM_DRIFT_X = 25; // max sideways velocity of falling items, px/s
-const BOSS_SPEED = 60;
-const BOSS_Y = 36;
-const PIZZA_DEFLECT_VELOCITY = -260; // boss knocks pizzas up off-screen
+const ITEM_DRIFT_X = 100; // max sideways velocity of falling items, px/s
+const BOSS_SPEED = 240;
+const BOSS_Y = 144;
+const PIZZA_DEFLECT_VELOCITY = -1040; // boss knocks pizzas up off-screen
 const WIN_BEAT_MS = 300; // pause on the full bar before completing
-// Logical display sizes (the placeholder photos are much larger).
-const PLAYER_W = 16;
-const PLAYER_H = 24;
-const DUMPLING_SIZE = 12;
-const PIZZA_SIZE = 14;
-const BOSS_SIZE = 32;
-const BAR_W = 120;
-const BAR_H = 5;
-const BAR_Y = 8;
+// Display sizes on the native 1280×720 canvas (the placeholder photos are much larger).
+const PLAYER_W = 64;
+const PLAYER_H = 96;
+const DUMPLING_SIZE = 48;
+const PIZZA_SIZE = 56;
+const BOSS_SIZE = 128;
+const BAR_W = 480;
+const BAR_H = 20;
+const BAR_Y = 32;
 
 const TEX_PLAYER = 'pizza-run-player';
 const TEX_DUMPLING = 'pizza-run-dumpling';
@@ -77,7 +77,7 @@ export class PizzaRunMiniGame extends MiniGameScene {
 
         this.cameras.main.setBackgroundColor('#1d2233');
 
-        this.player = this.physics.add.sprite(GAME_WIDTH / 2, GAME_HEIGHT - PLAYER_H / 2 - 2, TEX_PLAYER);
+        this.player = this.physics.add.sprite(GAME_WIDTH / 2, GAME_HEIGHT - PLAYER_H / 2 - 8, TEX_PLAYER);
         this.player.setDisplaySize(PLAYER_W, PLAYER_H).setCollideWorldBounds(true);
 
         this.dumplings = this.physics.add.group();
@@ -89,8 +89,8 @@ export class PizzaRunMiniGame extends MiniGameScene {
 
         // Progress bar (game-scene UI, no text → Phaser, not DOM — §3.8).
         this.add
-            .rectangle(GAME_WIDTH / 2, BAR_Y, BAR_W + 2, BAR_H + 2)
-            .setStrokeStyle(1, 0xffffff);
+            .rectangle(GAME_WIDTH / 2, BAR_Y, BAR_W + 8, BAR_H + 8)
+            .setStrokeStyle(4, 0xffffff);
         this.barFill = this.add
             .rectangle(GAME_WIDTH / 2 - BAR_W / 2, BAR_Y, BAR_W, BAR_H, 0x8fd18f)
             .setOrigin(0, 0.5)

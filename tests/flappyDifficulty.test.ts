@@ -9,13 +9,13 @@ describe('flappy difficultyFor', () => {
 
     it('has the intended endpoints', () => {
         const start = difficultyFor(0);
-        expect(start.scrollSpeed).toBe(55);
+        expect(start.scrollSpeed).toBe(220);
         expect(start.gateIntervalMs).toBe(2600);
-        expect(start.gapSize).toBe(88);
+        expect(start.gapSize).toBe(352);
         const end = difficultyFor(1);
-        expect(end.scrollSpeed).toBe(100);
+        expect(end.scrollSpeed).toBe(400);
         expect(end.gateIntervalMs).toBe(2000);
-        expect(end.gapSize).toBe(64);
+        expect(end.gapSize).toBe(256);
         expect(end.moverChance).toBe(0.5);
     });
 

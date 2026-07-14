@@ -39,7 +39,7 @@
 | Decision | Choice |
 |---|---|
 | Engine | **Phaser 3.90.0**, pinned — user chose to stay on 3.x over the now-stable Phaser 4 |
-| Canvas | **320×180 logical/world space on a 1280×720 backing store**: every in-canvas scene applies a zoom-4 camera (`src/scenes/pixelCamera.ts` — `applyPixelCamera`; `setScrollFactor(0)` objects need `HUD_OFFSET_X/Y`), so pixel art renders as crisp 4×4 blocks while in-canvas video samples at up to 720p. `pixelArt: true` + smooth canvas CSS (`main.ts` sets `image-rendering: auto` — the art is already blocky inside the store); `Scale.FIT` — user re-confirmed `FIT` (letterbox bars on >16:9 phones) over `EXPAND`. Chosen over dropping pixel art — see `docs/option-b-smooth-art.md` for that pivot option |
+| Canvas | **Native 1280×720 smooth-art canvas**: world coordinates == canvas coordinates, no camera zoom, `pixelArt: false` (default antialiased rendering). No per-scene camera setup and no `pixelCamera.ts`; `setScrollFactor(0)` HUD objects use plain screen coordinates. `Scale.FIT` — user re-confirmed `FIT` (letterbox bars on >16:9 phones) over `EXPAND`. Placeholder assets (runtime `generateTexture` textures + the Tiled tilesets) are drawn/scaled ×4 of their former 320×180 sizes until real art lands in milestone 8. The DOM overlay's `--px` scale is still computed from a 320×180 pixel-font grid (`UI_GRID_*` in `dimensions.ts`), keeping crisp integer font scaling. This is the "Option B" pivot documented in `docs/option-b-smooth-art.md`, chosen 2026-07 over the former pixel-art scheme ("Option C") |
 | Mobile orientation | **Landscape only** (user confirmed): CSS rotate-device overlay in portrait (`ui/rotateOverlay.ts`); Android also hard-locks via `orientation.lock` once fullscreen |
 | Fullscreen | Enter browser fullscreen on the start-game gesture (`ui/fullscreen.ts`; `fullscreenTarget: document.body` so the DOM overlay stays visible). No-op on iPhone Safari (no Fullscreen API) |
 | Language / bundler | TypeScript + Vite |
@@ -89,8 +89,8 @@ Rules:
 src/
   main.ts                    # Phaser.Game bootstrap (registers all scenes)
   config/
-    gameConfig.ts            # Phaser GameConfig (pixelArt: true, Scale.FIT)
-    dimensions.ts            # 320×180 logical-size constants
+    gameConfig.ts            # Phaser GameConfig (pixelArt: false, Scale.FIT)
+    dimensions.ts            # native 1280×720 canvas size + UI_GRID_* font grid
     stages.ts                # stage REGISTRY + StageDef/TriggerDef/ExitDef/ActivityRef types (§3.2)
     items.ts                 # item REGISTRY + ItemDef/ItemId types (§3.4)
   core/
@@ -338,7 +338,7 @@ export interface ClockSource { nowMs(): number }   // monotonic within a playbac
 `SubtitleEngine.play(trackId, clock)` polls the clock on a host-driven `update()` tick
 (not `setInterval`) and tells `SubtitleOverlay` which cue is active. `SubtitleOverlay`
 is a single DOM div (`.subtitle-bar`) positioned over the canvas (via `ui/domOverlay.ts`):
-DOM gives crisp readable text at any canvas zoom, trivial CJK font support, and one CSS
+DOM gives crisp readable text at any window scale, trivial CJK font support, and one CSS
 stylesheet for both dialogue and video subtitles. On `locale:changed`, the engine
 reloads the playing track in the new locale and re-syncs.
 
@@ -347,12 +347,11 @@ reloads the playing track in the new locale and re-syncs.
 `VideoScene` (one generic scene, parameterized by the `ActivityRef`; launched by
 FlowDirector for every `type: 'video'` activity, over the paused `WorldScene`):
 - Lazy-loads the video in `preload` (`this.load.video(videoKey, videoUrl)`), fits it
-  to the 320×180 logical view on the metadata event, then plays. The video texture
-  is drawn LINEAR-filtered onto the 1280×720 backing store
-  (`makeVideoSmooth` in `src/scenes/pixelCamera.ts`), so any source resolution up
-  to 720p survives intact instead of being crushed to 320×180.
+  to the native 1280×720 canvas on the metadata event, then plays. With
+  `pixelArt: false` the video texture is LINEAR-filtered by default, so any source
+  resolution up to 720p survives intact.
 - A future in-game background video (e.g. behind the dance mini-game) needs no new
-  machinery: `add.video` in world coords + `makeVideoSmooth` + a low depth.
+  machinery: `add.video` in world coords + a low depth.
 - Autoplay policy: playback always starts after a user gesture (menu click / trigger
   interaction), so sound is allowed. **Still pending: a real-browser check of
   autoplay-with-sound after the trigger gesture** — fall back to muted +
@@ -399,7 +398,7 @@ launched by FlowDirector over the paused world, which keeps rendering underneath
 **Use the DOM overlay** for *screen-space* text — text that belongs to the "screen", not
 the game world: subtitles (dialogue + video), menus, stage-select list, language switcher,
 skip button, any paragraph-length localized text. Reasons: correct CJK wrapping, easy
-web-font loading for all four scripts, crisp at any canvas zoom, one CSS stylesheet,
+web-font loading for all four scripts, crisp at any window scale, one CSS stylesheet,
 renders above `<video>`/canvas trivially.
 
 **Use Phaser text** for *world-space* text — text that lives inside the game simulation:

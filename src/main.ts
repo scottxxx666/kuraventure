@@ -43,14 +43,6 @@ const game = new Phaser.Game({
     ]
 });
 
-// pixelArt:true sets image-rendering:pixelated on the canvas CSS, but art is
-// already rendered as 4×4 blocks in the 1280×720 backing store (pixelCamera.ts),
-// so the final canvas→window scale should be smooth — nearest-neighbor here
-// only adds shimmer at fractional window scales and aliases video.
-game.events.once(Phaser.Core.Events.READY, () => {
-    Phaser.Display.Canvas.CanvasInterpolation.setBicubic(game.canvas);
-});
-
 flowDirector.init(game);
 
 // Input sources feed the one InputService; gameplay reads only the service (PLAN.md §3.10).

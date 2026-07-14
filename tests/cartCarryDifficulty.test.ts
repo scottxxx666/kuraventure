@@ -14,15 +14,15 @@ describe('cart-carry difficultyFor', () => {
 
     it('has the intended endpoints', () => {
         const start = difficultyFor(0);
-        expect(start.sectionGapPx).toBe(120);
-        expect(start.spikeMinH).toBe(40);
-        expect(start.spikeMaxH).toBe(72);
-        expect(start.gateGapSize).toBe(84);
+        expect(start.sectionGapPx).toBe(480);
+        expect(start.spikeMinH).toBe(160);
+        expect(start.spikeMaxH).toBe(288);
+        expect(start.gateGapSize).toBe(336);
         const end = difficultyFor(1);
-        expect(end.sectionGapPx).toBe(72);
-        expect(end.spikeMinH).toBe(64);
-        expect(end.spikeMaxH).toBe(104);
-        expect(end.gateGapSize).toBe(60);
+        expect(end.sectionGapPx).toBe(288);
+        expect(end.spikeMinH).toBe(256);
+        expect(end.spikeMaxH).toBe(416);
+        expect(end.gateGapSize).toBe(240);
         expect(end.slalomChance).toBe(0.3);
         expect(end.gateChance).toBe(0.25);
         expect(end.piranhaChance).toBe(0.3);
@@ -73,8 +73,8 @@ describe('cart-carry difficultyFor', () => {
     });
 
     it('stays passable for any hardness: gate gaps and spike clearance', () => {
-        const gateFloor = CARRIER_SIZE + 2 * OBSTACLE_MARGIN; // 44
-        const spikeCeiling = CORRIDOR_H - CARRIER_SIZE - 2 * OBSTACLE_MARGIN; // 120
+        const gateFloor = CARRIER_SIZE + 2 * OBSTACLE_MARGIN; // 176
+        const spikeCeiling = CORRIDOR_H - CARRIER_SIZE - 2 * OBSTACLE_MARGIN; // 480
         for (const hardness of [0.5, 1, 2]) {
             for (let i = 0; i <= 10; i++) {
                 const d = difficultyFor(i / 10, hardness);
@@ -109,10 +109,10 @@ describe('cart-carry difficultyFor', () => {
             for (const hardness of [0.1, 0.5, 2, 10]) {
                 for (const t of [0, 0.5, 1]) {
                     const d = difficultyFor(t, hardness);
-                    expect(d.sectionGapPx).toBeGreaterThanOrEqual(72);
-                    expect(d.sectionGapPx).toBeLessThanOrEqual(120);
-                    expect(d.gateGapSize).toBeGreaterThanOrEqual(60);
-                    expect(d.gateGapSize).toBeLessThanOrEqual(84);
+                    expect(d.sectionGapPx).toBeGreaterThanOrEqual(288);
+                    expect(d.sectionGapPx).toBeLessThanOrEqual(480);
+                    expect(d.gateGapSize).toBeGreaterThanOrEqual(240);
+                    expect(d.gateGapSize).toBeLessThanOrEqual(336);
                 }
             }
         });

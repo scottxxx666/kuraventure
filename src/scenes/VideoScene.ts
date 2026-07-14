@@ -8,7 +8,6 @@ import { subtitleEngine } from '../subtitles/SubtitleEngine';
 import { VideoClock } from '../subtitles/VideoClock';
 import { getOverlayRoot } from '../ui/domOverlay';
 import { SceneKeys } from './keys';
-import { applyPixelCamera, makeVideoSmooth } from './pixelCamera';
 
 type VideoActivity = Extract<ActivityRef, { type: 'video' }>;
 
@@ -52,14 +51,12 @@ export class VideoScene extends Phaser.Scene {
     }
 
     create(): void {
-        applyPixelCamera(this);
         this.cameras.main.setBackgroundColor('#000');
 
         // Playing with audio is allowed because activities always start from a
         // user gesture (PLAN.md §3.6); if a browser still blocks it, fall back
         // to muted + "tap to enable sound" (verify on first real cutscene).
         const video = this.add.video(GAME_WIDTH / 2, GAME_HEIGHT / 2, this.activity.videoKey);
-        makeVideoSmooth(this, video);
         // Dimensions arrive with the metadata; fit() now covers cached videos.
         const fit = (): void => {
             if (video.width > 0 && video.height > 0) {
