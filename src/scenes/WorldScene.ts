@@ -9,6 +9,7 @@ import { i18nService } from '../services/I18nService';
 import { progressService } from '../services/ProgressService';
 import { createOverlayElement } from '../ui/domOverlay';
 import { SceneKeys } from './keys';
+import { applyPixelCamera } from './pixelCamera';
 
 const PLAYER_SPEED = 80; // px/s
 const TILE_SIZE = 16; // fallback size for point-object triggers
@@ -68,6 +69,8 @@ export class WorldScene extends Phaser.Scene {
     }
 
     create(): void {
+        // Before setBounds/startFollow — their initial clamp must see the zoom.
+        applyPixelCamera(this);
         this.ensurePlaceholderTextures();
 
         const map = this.make.tilemap({ key: this.stage.tilemapKey });

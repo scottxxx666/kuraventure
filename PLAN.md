@@ -39,7 +39,7 @@
 | Decision | Choice |
 |---|---|
 | Engine | **Phaser 3.90.0**, pinned — user chose to stay on 3.x over the now-stable Phaser 4 |
-| Canvas | **320×180 logical**, `Scale.FIT`, `pixelArt: true`, integer art scale — user re-confirmed `FIT` (letterbox bars on >16:9 phones) over `EXPAND` |
+| Canvas | **320×180 logical/world space on a 1280×720 backing store**: every in-canvas scene applies a zoom-4 camera (`src/scenes/pixelCamera.ts` — `applyPixelCamera`; `setScrollFactor(0)` objects need `HUD_OFFSET_X/Y`), so pixel art renders as crisp 4×4 blocks while in-canvas video samples at up to 720p. `pixelArt: true` + smooth canvas CSS (`main.ts` sets `image-rendering: auto` — the art is already blocky inside the store); `Scale.FIT` — user re-confirmed `FIT` (letterbox bars on >16:9 phones) over `EXPAND`. Chosen over dropping pixel art — see `docs/option-b-smooth-art.md` for that pivot option |
 | Mobile orientation | **Landscape only** (user confirmed): CSS rotate-device overlay in portrait (`ui/rotateOverlay.ts`); Android also hard-locks via `orientation.lock` once fullscreen |
 | Fullscreen | Enter browser fullscreen on the start-game gesture (`ui/fullscreen.ts`; `fullscreenTarget: document.body` so the DOM overlay stays visible). No-op on iPhone Safari (no Fullscreen API) |
 | Language / bundler | TypeScript + Vite |
@@ -347,7 +347,12 @@ reloads the playing track in the new locale and re-syncs.
 `VideoScene` (one generic scene, parameterized by the `ActivityRef`; launched by
 FlowDirector for every `type: 'video'` activity, over the paused `WorldScene`):
 - Lazy-loads the video in `preload` (`this.load.video(videoKey, videoUrl)`), fits it
-  to the 320×180 canvas on the metadata event, then plays.
+  to the 320×180 logical view on the metadata event, then plays. The video texture
+  is drawn LINEAR-filtered onto the 1280×720 backing store
+  (`makeVideoSmooth` in `src/scenes/pixelCamera.ts`), so any source resolution up
+  to 720p survives intact instead of being crushed to 320×180.
+- A future in-game background video (e.g. behind the dance mini-game) needs no new
+  machinery: `add.video` in world coords + `makeVideoSmooth` + a low depth.
 - Autoplay policy: playback always starts after a user gesture (menu click / trigger
   interaction), so sound is allowed. **Still pending: a real-browser check of
   autoplay-with-sound after the trigger gesture** — fall back to muted +

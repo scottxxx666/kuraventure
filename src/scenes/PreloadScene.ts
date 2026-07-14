@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/dimensions';
 import { SceneKeys } from './keys';
+import { applyPixelCamera } from './pixelCamera';
 
 /** Loads global assets shared across stages, showing a progress bar. */
 export class PreloadScene extends Phaser.Scene {
@@ -9,6 +10,7 @@ export class PreloadScene extends Phaser.Scene {
     }
 
     preload(): void {
+        applyPixelCamera(this); // the progress bar draws during preload
         const barWidth = Math.floor(GAME_WIDTH * 0.6);
         const barHeight = 8;
         const x = Math.floor((GAME_WIDTH - barWidth) / 2);

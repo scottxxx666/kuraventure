@@ -7,6 +7,7 @@ import { i18nService } from '../../../services/I18nService';
 import { createOverlayElement } from '../../../ui/domOverlay';
 import { runFailFlow } from '../failFlow';
 import { SceneKeys } from '../../keys';
+import { HUD_OFFSET_X, HUD_OFFSET_Y } from '../../pixelCamera';
 import { MiniGameScene } from '../MiniGameScene';
 import { difficultyFor } from './difficulty';
 import type { Difficulty } from './difficulty';
@@ -167,12 +168,13 @@ export class CartCarryMiniGame extends MiniGameScene {
         this.cameras.main.startFollow(this.followTarget, true, 0.15, 0.15);
 
         // Distance bar (game-scene UI, no text → Phaser, not DOM — §3.8).
+        // sf=0 objects need the HUD offset to land on screen (pixelCamera.ts).
         this.add
-            .rectangle(GAME_WIDTH / 2, BAR_Y, BAR_W + 2, BAR_H + 2)
+            .rectangle(GAME_WIDTH / 2 + HUD_OFFSET_X, BAR_Y + HUD_OFFSET_Y, BAR_W + 2, BAR_H + 2)
             .setStrokeStyle(1, 0xffffff)
             .setScrollFactor(0);
         this.barFill = this.add
-            .rectangle(GAME_WIDTH / 2 - BAR_W / 2, BAR_Y, BAR_W, BAR_H, 0x8fd18f)
+            .rectangle(GAME_WIDTH / 2 - BAR_W / 2 + HUD_OFFSET_X, BAR_Y + HUD_OFFSET_Y, BAR_W, BAR_H, 0x8fd18f)
             .setOrigin(0, 0.5)
             .setScale(0, 1)
             .setScrollFactor(0);

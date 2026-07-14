@@ -4,6 +4,7 @@ import { inputService } from '../../input/InputService';
 import { i18nService } from '../../services/I18nService';
 import type { MessageKey } from '../../services/I18nService';
 import { createOverlayElement } from '../../ui/domOverlay';
+import { HUD_OFFSET_X, HUD_OFFSET_Y, makeVideoSmooth } from '../pixelCamera';
 
 /**
  * Shared mini-game fail flow (PLAN.md §3.1 "shared by 2+ mini-games"):
@@ -56,10 +57,12 @@ export function runFailFlow(opts: FailFlowOptions): () => void {
 
     const playFailVideo = (): void => {
         // scrollFactor 0: scrolled-camera mini-games (cart-carry) fail mid-level.
+        // sf=0 objects need the HUD offset to land on screen (pixelCamera.ts).
         const video = opts.scene.add
-            .video(GAME_WIDTH / 2, GAME_HEIGHT / 2, opts.videoKey)
+            .video(GAME_WIDTH / 2 + HUD_OFFSET_X, GAME_HEIGHT / 2 + HUD_OFFSET_Y, opts.videoKey)
             .setDepth(100)
             .setScrollFactor(0);
+        makeVideoSmooth(opts.scene, video);
         const fit = (): void => {
             if (video.width > 0 && video.height > 0) {
                 const scale = Math.min(GAME_WIDTH / video.width, GAME_HEIGHT / video.height);
