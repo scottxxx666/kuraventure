@@ -10,7 +10,7 @@
   "tilewidth": 64,
   "tileheight": 64,
   "nextlayerid": 4,
-  "nextobjectid": 12,
+  "nextobjectid": 13,
   "tilesets": [
     {
       "firstgid": 1,
@@ -1391,6 +1391,17 @@
           "name": "trigger-dance",
           "type": "",
           "x": 1344,
+          "y": 960,
+          "width": 128,
+          "height": 128,
+          "rotation": 0,
+          "visible": true
+        },
+        {
+          "id": 12,
+          "name": "trigger-jump",
+          "type": "",
+          "x": 1664,
           "y": 960,
           "width": 128,
           "height": 128,

@@ -64,6 +64,14 @@ export const demoStage: StageDef = {
             once: false
         },
         {
+            // Optional + repeatable, like pizza-run.
+            id: 'jump-quest',
+            at: { objectName: 'trigger-jump' },
+            activity: { type: 'minigame', sceneKey: SceneKeys.JumpQuest },
+            required: false,
+            once: false
+        },
+        {
             // Optional + repeatable so the video/skip/locales can be re-tested freely.
             id: 'intro-video',
             at: { objectName: 'trigger-video' },

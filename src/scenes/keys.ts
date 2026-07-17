@@ -12,7 +12,8 @@ export const SceneKeys = {
     PizzaRun: 'PizzaRun',
     Flappy: 'Flappy',
     CartCarry: 'CartCarry',
-    Dance: 'Dance'
+    Dance: 'Dance',
+    JumpQuest: 'JumpQuest'
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

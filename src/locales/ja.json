@@ -26,6 +26,8 @@
     "minigame.dance.failed": "しっぱい！",
     "minigame.dance.retry": "もう一度",
     "minigame.dance.quit": "あきらめる",
+    "minigame.jumpQuest.prompt": "頂上を目指せ！←→ 移動 · A ジャンプ",
+    "minigame.jumpQuest.quit": "あきらめる",
     "stage.demo.title": "デモステージ",
     "stage.demo-2.title": "デモステージ 2",
     "stage.demo-branch.title": "分岐ステージ"

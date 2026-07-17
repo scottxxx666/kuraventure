@@ -250,6 +250,14 @@ html:lang(ja) #ui-overlay {
     right: calc(var(--px) * 6px);
 }
 
+/* Jump Quest give-up button (src/scenes/minigames/jump-quest/): top-right
+   like .video-skip, clear of the HUD prompt and thumb corners. */
+.jump-quest-quit {
+    position: absolute;
+    top: calc(var(--px) * 6px);
+    right: calc(var(--px) * 6px);
+}
+
 /* Landscape-only rotate prompt (src/ui/rotateOverlay.ts), touch devices only.
    CSS alone toggles it — visible while the viewport is portrait; z-index keeps
    it above later-appended overlay children (menus, vpad). */

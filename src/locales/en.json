@@ -26,6 +26,8 @@
     "minigame.dance.failed": "Failed!",
     "minigame.dance.retry": "Retry",
     "minigame.dance.quit": "Give up",
+    "minigame.jumpQuest.prompt": "Reach the top! ←→ move · A jumps",
+    "minigame.jumpQuest.quit": "Give up",
     "stage.demo.title": "Demo Stage",
     "stage.demo-2.title": "Demo Stage 2",
     "stage.demo-branch.title": "Branch Stage"

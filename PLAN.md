@@ -601,6 +601,13 @@ Remaining:
    from a user gesture (the run's A press) so autoplay is never blocked, and
    gameplay timing follows the music's own clock (`sound.seek`), falling back to
    the frame clock while no track exists.
+   Also done: **Jump Quest** (`scenes/minigames/jump-quest/`), a MapleStory
+   "Forest of Patience"-style vertical climb (one-way platforms, walk + A to
+   jump, patrol monsters / crossing flyers knock the player down — no fail
+   state, reach the summit to win; disappearing and moving platforms), triggered
+   from the demo stage. Its hand-authored layout in `level.ts` is proven
+   climbable by a pure `validateLevel` against the jump budget (vitest-covered);
+   placeholder art — see `public/assets/images/jump-quest/README.md`.
 9. **Polish** — responsive `Scale.FIT` tuning, transitions, audio, credits. TBD scope.
 
 **Do not run build/test/lint scripts — the user runs them manually.** Write tests;
