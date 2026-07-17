@@ -261,6 +261,48 @@ html:lang(ja) #ui-overlay {
     right: calc(var(--px) * 6px);
 }
 
+/* Jump Rope QTE cue (src/scenes/minigames/jump-rope/): canvas-aligned wrapper
+   (same trick as .vpad-lanes) so the DOM A/B badge sits exactly where the
+   scene draws its shrinking ring — canvas (640, 180) → left 50% / top 25%,
+   badge diameter 56 canvas px → 4.375% of 1280. Keep in sync with the QTE_*
+   constants in JumpRopeMiniGame.ts. */
+.jump-rope-qte {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(100vw, calc(100vh * 1280 / 720));
+    aspect-ratio: 1280 / 720;
+}
+
+.jump-rope-qte-badge {
+    position: absolute;
+    left: 50%;
+    top: 25%;
+    transform: translate(-50%, -50%);
+    width: 4.375%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(var(--px) * 10px);
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.jump-rope-qte-badge.is-glowing {
+    border-color: #ffe27a;
+    color: #ffe27a;
+    background: rgba(110, 84, 0, 0.6);
+    box-shadow: 0 0 calc(var(--px) * 6px) #ffe27a;
+}
+
+.jump-rope-qte-badge.is-hidden {
+    display: none;
+}
+
 /* Landscape-only rotate prompt (src/ui/rotateOverlay.ts), touch devices only.
    CSS alone toggles it — visible while the viewport is portrait; z-index keeps
    it above later-appended overlay children (menus, vpad). */

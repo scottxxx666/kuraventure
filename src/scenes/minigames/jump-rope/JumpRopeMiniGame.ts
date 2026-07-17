@@ -12,7 +12,10 @@ import {
     ENTRY_PERIOD_MS,
     TARGET_JUMPS,
     advancePhase,
+    enterGaugeFrac,
+    isJumpWindow,
     isSafeEnterPhase,
+    jumpGaugeFrac,
     periodForCount,
     timeToBottomMs
 } from './timing';
@@ -28,7 +31,11 @@ import {
  * or being grounded when the rope sweeps the feet — runs the shared fail flow
  * (one strike). The rope is drawn as a front/back-swinging ellipse: in front
  * of the members while descending, faded behind them while rising, with a
- * ground shadow pulsing as it nears the feet for readability.
+ * ground shadow pulsing as it nears the feet for readability. Timing is
+ * driven by a timed-button QTE cue (renderQte): the A/B badge appears with a
+ * full radial gauge exactly when pressing becomes valid, the gauge drains to
+ * the deadline, and the cue hides once answered. Letting a gauge empty
+ * unanswered fails, as does pressing while no cue is up.
  * All six figures are runtime-generated placeholder blobs, to be replaced by
  * IZ*ONE art later.
  */
@@ -57,6 +64,15 @@ const TURNER_TINT = 0x7aa5e8;
 const MEMBER_TINTS = [0xf2909f, 0xf2c063, 0x9fd6a5, 0xb9a5f0];
 const TRIP_TINT = 0xff5a5a;
 
+/** QTE cue anchor — the DOM badge in .jump-rope-qte sits at the same canvas
+    point via percentages (left 50% / top 25%); keep the CSS in sync. */
+const QTE_X = GAME_WIDTH / 2;
+const QTE_Y = 180;
+const QTE_GAUGE_RADIUS = 40; // just outside the badge (28 canvas px radius)
+const QTE_GAUGE_WIDTH = 6;
+const QTE_TRACK_COLOR = 0xffffff;
+const QTE_GLOW_COLOR = 0xffe27a;
+
 const TEX_FIGURE = 'jump-rope-figure';
 const ENDING_VIDEO_KEY = 'jump-rope-ending';
 
@@ -79,6 +95,14 @@ export class JumpRopeMiniGame extends MiniGameScene {
     private ropeFront!: Phaser.GameObjects.Graphics;
     private ropeBack!: Phaser.GameObjects.Graphics;
     private ropeShadow!: Phaser.GameObjects.Graphics;
+    private qteRing!: Phaser.GameObjects.Graphics;
+    private qteWrap: HTMLElement | null = null;
+    private qteBadge: HTMLElement | null = null;
+    private qteLetter: 'A' | 'B' | null = null;
+    private qteGlow = false;
+    /** The current enter window was answered — further B taps are ignored. */
+    private enterConsumed = false;
+    private wasInEnterWindow = false;
     private promptEl: HTMLElement | null = null;
     private countEl: HTMLElement | null = null;
     private quitButton: HTMLButtonElement | null = null;
@@ -107,6 +131,8 @@ export class JumpRopeMiniGame extends MiniGameScene {
         this.members = [];
         this.countEl = null;
         this.failFlowCleanup = null;
+        this.enterConsumed = false;
+        this.wasInEnterWindow = false;
 
         this.cameras.main.setBackgroundColor('#2c3a54');
         this.add.rectangle(GAME_WIDTH / 2, 655, GAME_WIDTH, 130, 0x9a8557);
@@ -125,6 +151,16 @@ export class JumpRopeMiniGame extends MiniGameScene {
         this.ropeShadow = this.add.graphics().setDepth(2);
         this.ropeBack = this.add.graphics().setDepth(3).setAlpha(0.35);
         this.ropeFront = this.add.graphics().setDepth(20);
+        this.qteRing = this.add.graphics().setDepth(25);
+
+        // QTE badge: a DOM A/B button (matching the virtual pad's look) inside
+        // a canvas-aligned wrapper, so the canvas-drawn ring lands on it.
+        this.qteLetter = null;
+        this.qteGlow = false;
+        this.qteWrap = createOverlayElement('jump-rope-qte');
+        this.qteBadge = document.createElement('div');
+        this.qteBadge.className = 'jump-rope-qte-badge is-hidden';
+        this.qteWrap.appendChild(this.qteBadge);
 
         for (const x of TURNER_X) {
             this.add.sprite(x, FEET_Y, TEX_FIGURE).setOrigin(0.5, 1).setDepth(10).setTint(TURNER_TINT);
@@ -172,6 +208,7 @@ export class JumpRopeMiniGame extends MiniGameScene {
             this.promptEl?.remove();
             this.countEl?.remove();
             this.quitButton?.remove();
+            this.qteWrap?.remove();
             this.offA?.();
             this.offB?.();
             this.failFlowCleanup?.();
@@ -191,10 +228,23 @@ export class JumpRopeMiniGame extends MiniGameScene {
             this.onBottomCross();
         }
         if (this.state === 'entering') {
+            this.checkEnterTimeout();
             this.autoJumpEnteredMembers(period);
         }
         this.renderRope();
         this.renderMembers();
+        this.renderQte(period);
+    }
+
+    /** QTE rule: an enter window that closes unanswered while someone still
+        waits outside is a fail, same as a mistimed press. */
+    private checkEnterTimeout(): void {
+        const inWindow = isSafeEnterPhase(this.phase);
+        const expired = this.wasInEnterWindow && !inWindow && !this.enterConsumed;
+        this.wasInEnterWindow = inWindow;
+        if (expired && this.members.some((m) => m.state === 'waiting')) {
+            this.trip([]);
+        }
     }
 
     private startRope(): void {
@@ -204,10 +254,11 @@ export class JumpRopeMiniGame extends MiniGameScene {
         }
     }
 
-    /** Entry phase: B in the safe window dashes the next member in; any other
-        moment they run straight into the rope — one strike. */
+    /** Entry phase: B while the cue is up dashes the next member in (extra
+        taps in an answered window are ignored); B with no cue showing sends
+        them straight into the rope — one strike. */
     private onEnterPress(): void {
-        if (this.members.some((m) => m.state === 'dashing')) {
+        if (this.enterConsumed || this.members.some((m) => m.state === 'dashing')) {
             return;
         }
         const member = this.members.find((m) => m.state === 'waiting');
@@ -216,6 +267,7 @@ export class JumpRopeMiniGame extends MiniGameScene {
         }
         member.state = 'dashing';
         const safe = isSafeEnterPhase(this.phase);
+        this.enterConsumed = safe;
         this.tweens.add({
             targets: member.sprite,
             x: member.slotX,
@@ -244,9 +296,15 @@ export class JumpRopeMiniGame extends MiniGameScene {
     }
 
     /** A jumps the whole line together (they land in sync, so one grounded
-        check covers all); mid-air presses are ignored — no jump spam. */
+        check covers all). Mid-air presses are ignored — an answered window's
+        extra taps are harmless — but A with no cue showing is a stumble:
+        one strike, like any mistimed QTE press. */
     private onJumpPress(): void {
         if (this.nowMs - this.members[0].jumpAtMs < AIR_MS) {
+            return;
+        }
+        if (!isJumpWindow(timeToBottomMs(this.phase, periodForCount(this.count)))) {
+            this.trip(this.members);
             return;
         }
         for (const member of this.members) {
@@ -269,7 +327,10 @@ export class JumpRopeMiniGame extends MiniGameScene {
 
     private onBottomCross(): void {
         if (this.state !== 'jumping') {
-            return; // entry phase: in-rope members are auto-jumped clear
+            // Entry phase: in-rope members are auto-jumped clear, and each
+            // sweep opens a fresh enter window.
+            this.enterConsumed = false;
+            return;
         }
         const grounded = this.members.filter((m) => this.nowMs - m.jumpAtMs >= AIR_MS);
         if (grounded.length > 0) {
@@ -285,6 +346,7 @@ export class JumpRopeMiniGame extends MiniGameScene {
 
     private trip(tripped: Member[]): void {
         this.state = 'ended';
+        this.hideQte();
         this.quitButton?.remove();
         this.quitButton = null;
         for (const member of tripped) {
@@ -304,6 +366,7 @@ export class JumpRopeMiniGame extends MiniGameScene {
 
     private win(): void {
         this.state = 'ended';
+        this.hideQte();
         this.quitButton?.remove();
         this.quitButton = null;
         for (const member of this.members) {
@@ -352,6 +415,68 @@ export class JumpRopeMiniGame extends MiniGameScene {
         this.ropeShadow.clear();
         this.ropeShadow.fillStyle(0x000000, 0.3 * proximity);
         this.ropeShadow.fillEllipse(midX, FEET_Y + 8, RIGHT_HAND_X - LEFT_HAND_X, 20);
+    }
+
+    /** QTE cue (timed-button style): the A/B badge is visible exactly while
+        pressing is valid, with a radial gauge that starts full and drains to
+        nothing at the deadline. It hides the moment the window is answered.
+        DOM is only touched when the letter/visibility actually change; the
+        gauge redraws per frame. */
+    private renderQte(periodMs: number): void {
+        let letter: 'A' | 'B' | null = null;
+        let frac = 0;
+        if (this.state === 'entering') {
+            const waiting = this.members.some((m) => m.state === 'waiting');
+            const dashing = this.members.some((m) => m.state === 'dashing');
+            if (waiting && !dashing && !this.enterConsumed) {
+                frac = enterGaugeFrac(this.phase);
+                letter = frac > 0 ? 'B' : null;
+            }
+        } else if (this.state === 'jumping') {
+            const grounded = this.nowMs - this.members[0].jumpAtMs >= AIR_MS;
+            if (grounded) {
+                frac = jumpGaugeFrac(timeToBottomMs(this.phase, periodMs));
+                letter = frac > 0 ? 'A' : null;
+            }
+        }
+        this.syncQteBadge(letter, letter !== null);
+
+        this.qteRing.clear();
+        if (!letter) {
+            return;
+        }
+        this.qteRing.lineStyle(QTE_GAUGE_WIDTH, QTE_TRACK_COLOR, 0.18);
+        this.qteRing.strokeCircle(QTE_X, QTE_Y, QTE_GAUGE_RADIUS);
+        this.qteRing.lineStyle(QTE_GAUGE_WIDTH, QTE_GLOW_COLOR, 0.9);
+        this.qteRing.beginPath();
+        this.qteRing.arc(
+            QTE_X,
+            QTE_Y,
+            QTE_GAUGE_RADIUS,
+            -Math.PI / 2,
+            -Math.PI / 2 + Math.PI * 2 * frac
+        );
+        this.qteRing.strokePath();
+    }
+
+    private syncQteBadge(letter: 'A' | 'B' | null, glow: boolean): void {
+        if (!this.qteBadge) {
+            return;
+        }
+        if (letter !== this.qteLetter) {
+            this.qteLetter = letter;
+            this.qteBadge.textContent = letter ?? '';
+            this.qteBadge.classList.toggle('is-hidden', letter === null);
+        }
+        if (glow !== this.qteGlow) {
+            this.qteGlow = glow;
+            this.qteBadge.classList.toggle('is-glowing', glow);
+        }
+    }
+
+    private hideQte(): void {
+        this.qteRing.clear();
+        this.syncQteBadge(null, false);
     }
 
     private renderMembers(): void {

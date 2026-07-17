@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
+    AIR_MS,
     BOTTOM_PHASE,
     END_PERIOD_MS,
     ENTER_WINDOW,
+    JUMP_WINDOW_MS,
     START_PERIOD_MS,
     TARGET_JUMPS,
     advancePhase,
+    enterGaugeFrac,
+    isJumpWindow,
     isSafeEnterPhase,
+    jumpGaugeFrac,
     periodForCount,
     timeToBottomMs
 } from '../src/scenes/minigames/jump-rope/timing';
@@ -102,5 +107,33 @@ describe('jump-rope timeToBottomMs', () => {
     it('wraps: just past the bottom the next sweep is almost a full cycle away', () => {
         expect(timeToBottomMs(0.51, PERIOD)).toBeCloseTo(0.99 * PERIOD);
         expect(timeToBottomMs(0.9, PERIOD)).toBeCloseTo(0.6 * PERIOD);
+    });
+});
+
+describe('jump-rope QTE windows', () => {
+    it('isJumpWindow covers (0, JUMP_WINDOW_MS] before the sweep', () => {
+        expect(isJumpWindow(0)).toBe(false);
+        expect(isJumpWindow(1)).toBe(true);
+        expect(isJumpWindow(JUMP_WINDOW_MS)).toBe(true);
+        expect(isJumpWindow(JUMP_WINDOW_MS + 1)).toBe(false);
+    });
+
+    it('jumpGaugeFrac starts full at the window open and drains to the sweep', () => {
+        expect(jumpGaugeFrac(JUMP_WINDOW_MS)).toBe(1);
+        expect(jumpGaugeFrac(JUMP_WINDOW_MS / 2)).toBeCloseTo(0.5);
+        expect(jumpGaugeFrac(0)).toBe(0);
+        expect(jumpGaugeFrac(JUMP_WINDOW_MS + 1)).toBe(0);
+    });
+
+    it('enterGaugeFrac drains across the safe run-in window', () => {
+        expect(enterGaugeFrac(BOTTOM_PHASE)).toBeCloseTo(1);
+        expect(enterGaugeFrac(BOTTOM_PHASE + ENTER_WINDOW / 2)).toBeCloseTo(0.5);
+        expect(enterGaugeFrac(BOTTOM_PHASE + ENTER_WINDOW)).toBe(0);
+        expect(enterGaugeFrac(0.25)).toBe(0);
+    });
+
+    it('a press at the first cue frame still clears the sweep', () => {
+        // The press window must sit inside the airtime, or the cue would lie.
+        expect(JUMP_WINDOW_MS).toBeLessThan(AIR_MS);
     });
 });

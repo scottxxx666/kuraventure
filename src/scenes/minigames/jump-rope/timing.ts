@@ -18,7 +18,7 @@ export const END_PERIOD_MS = 1050;
 
 /** A jump keeps a member airborne this long; being mid-air when the rope
     crosses the bottom clears it, being grounded there is a trip. */
-export const AIR_MS = 480;
+export const AIR_MS = 640;
 
 export const BOTTOM_PHASE = 0.5;
 /** Safe run-in window: this fraction of a cycle right after a bottom
@@ -54,4 +54,27 @@ export function isSafeEnterPhase(phase: number): boolean {
 /** Ms until the rope next sweeps the feet (0 exactly at the bottom). */
 export function timeToBottomMs(phase: number, periodMs: number): number {
     return ((BOTTOM_PHASE - phase + 1) % 1) * periodMs;
+}
+
+/** QTE press window before a sweep (jump phase): the cue appears with a full
+    radial gauge and pressing is valid the whole time it is visible. Kept
+    inside AIR_MS so a press at the very first cue frame is still airborne
+    when the rope arrives — the cue never lies. */
+export const JUMP_WINDOW_MS = 600;
+
+/** True while the jump cue is up — pressing A now clears the coming sweep. */
+export function isJumpWindow(timeToBottom: number): boolean {
+    return timeToBottom > 0 && timeToBottom <= JUMP_WINDOW_MS;
+}
+
+/** Jump-cue gauge: 1 = window just opened, 0 = expired (at the sweep) or the
+    window is not open at all. */
+export function jumpGaugeFrac(timeToBottom: number): number {
+    return isJumpWindow(timeToBottom) ? timeToBottom / JUMP_WINDOW_MS : 0;
+}
+
+/** Enter-cue gauge over the safe run-in window: 1 = just opened (at the
+    sweep), 0 = expired or not open. */
+export function enterGaugeFrac(phase: number): number {
+    return isSafeEnterPhase(phase) ? (BOTTOM_PHASE + ENTER_WINDOW - phase) / ENTER_WINDOW : 0;
 }
