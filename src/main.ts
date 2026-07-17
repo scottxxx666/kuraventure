@@ -17,6 +17,7 @@ import { CartCarryMiniGame } from './scenes/minigames/cart-carry/CartCarryMiniGa
 import { DanceMiniGame } from './scenes/minigames/dance/DanceMiniGame';
 import { FlappyMiniGame } from './scenes/minigames/flappy/FlappyMiniGame';
 import { JumpQuestMiniGame } from './scenes/minigames/jump-quest/JumpQuestMiniGame';
+import { JumpRopeMiniGame } from './scenes/minigames/jump-rope/JumpRopeMiniGame';
 import { PizzaRunMiniGame } from './scenes/minigames/pizza-run/PizzaRunMiniGame';
 import { PreloadScene } from './scenes/PreloadScene';
 import { StageSelectScene } from './scenes/StageSelectScene';
@@ -41,7 +42,8 @@ const game = new Phaser.Game({
         FlappyMiniGame,
         CartCarryMiniGame,
         DanceMiniGame,
-        JumpQuestMiniGame
+        JumpQuestMiniGame,
+        JumpRopeMiniGame
     ]
 });
 

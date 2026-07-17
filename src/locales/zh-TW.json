@@ -28,6 +28,12 @@
     "minigame.dance.quit": "放棄",
     "minigame.jumpQuest.prompt": "爬到最頂端！←→ 移動 · A 跳躍",
     "minigame.jumpQuest.quit": "放棄",
+    "minigame.jumpRope.prompt": "按 A 開始 — B 進場、A 跳繩，連續跳 10 下！",
+    "minigame.jumpRope.enterHint": "繩子掃過地面後，按 B 衝進場！",
+    "minigame.jumpRope.jumpHint": "按 A 跳！連續 10 下！",
+    "minigame.jumpRope.failed": "絆到了！",
+    "minigame.jumpRope.retry": "再試一次",
+    "minigame.jumpRope.quit": "放棄",
     "stage.demo.title": "示範關卡",
     "stage.demo-2.title": "示範關卡 2",
     "stage.demo-branch.title": "分支關卡"

@@ -13,7 +13,8 @@ export const SceneKeys = {
     Flappy: 'Flappy',
     CartCarry: 'CartCarry',
     Dance: 'Dance',
-    JumpQuest: 'JumpQuest'
+    JumpQuest: 'JumpQuest',
+    JumpRope: 'JumpRope'
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

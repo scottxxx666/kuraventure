@@ -608,6 +608,14 @@ Remaining:
    from the demo stage. Its hand-authored layout in `level.ts` is proven
    climbable by a pure `validateLevel` against the jump budget (vitest-covered);
    placeholder art — see `public/assets/images/jump-quest/README.md`.
+   Also done: **Jump Rope** (`scenes/minigames/jump-rope/`), a six-member
+   long-rope routine seen from the front (two turners, four members): B in the
+   safe window after the rope sweeps the ground runs members in one at a time
+   (entered members auto-jump), then A jumps the whole line together — ten in a
+   row wins, the rope accelerating per count; any trip (mistimed run-in or
+   grounded at a sweep) is an instant fail via the shared fail flow. Rope
+   phase/window logic is pure in `timing.ts` (vitest-covered); all six figures
+   are runtime-generated placeholder blobs to be replaced with IZ*ONE art.
 9. **Polish** — responsive `Scale.FIT` tuning, transitions, audio, credits. TBD scope.
 
 **Do not run build/test/lint scripts — the user runs them manually.** Write tests;

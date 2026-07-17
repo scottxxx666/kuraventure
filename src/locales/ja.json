@@ -28,6 +28,12 @@
     "minigame.dance.quit": "あきらめる",
     "minigame.jumpQuest.prompt": "頂上を目指せ！←→ 移動 · A ジャンプ",
     "minigame.jumpQuest.quit": "あきらめる",
+    "minigame.jumpRope.prompt": "Aでスタート — Bで入場、Aでジャンプ。連続10回！",
+    "minigame.jumpRope.enterHint": "縄が地面を過ぎたらBで飛び込め！",
+    "minigame.jumpRope.jumpHint": "Aでジャンプ！連続10回！",
+    "minigame.jumpRope.failed": "ひっかかった！",
+    "minigame.jumpRope.retry": "もう一度",
+    "minigame.jumpRope.quit": "あきらめる",
     "stage.demo.title": "デモステージ",
     "stage.demo-2.title": "デモステージ 2",
     "stage.demo-branch.title": "分岐ステージ"

@@ -192,9 +192,10 @@ html:lang(ja) #ui-overlay {
     text-align: left;
 }
 
-/* Dance score readout (src/scenes/minigames/dance/DanceMiniGame.ts):
+/* Mini-game score/count readouts (dance score, jump-rope jump counter):
    top-center like .hud-prompt, shown while the run plays. */
-.dance-score {
+.dance-score,
+.jump-rope-count {
     position: absolute;
     top: calc(var(--px) * 6px);
     left: 0;
@@ -211,7 +212,8 @@ html:lang(ja) #ui-overlay {
 .pizza-run-failed,
 .flappy-failed,
 .cart-carry-failed,
-.dance-failed {
+.dance-failed,
+.jump-rope-failed {
     color: #ff5a5a;
 }
 
@@ -250,9 +252,10 @@ html:lang(ja) #ui-overlay {
     right: calc(var(--px) * 6px);
 }
 
-/* Jump Quest give-up button (src/scenes/minigames/jump-quest/): top-right
-   like .video-skip, clear of the HUD prompt and thumb corners. */
-.jump-quest-quit {
+/* Mini-game give-up buttons (jump-quest, jump-rope): top-right like
+   .video-skip, clear of the HUD prompt and thumb corners. */
+.jump-quest-quit,
+.jump-rope-quit {
     position: absolute;
     top: calc(var(--px) * 6px);
     right: calc(var(--px) * 6px);
