@@ -14,9 +14,7 @@ export interface Circle {
 
 /** The dog sits top-center so a dragging finger never covers its wake cues. */
 export const DOG_POS: Vec2 = { x: 640, y: 130 };
-/** Being pointer-down inside this circle while the dog is awake = bitten. */
-export const DANGER_RADIUS = 400;
-/** Drop zone — outside the danger circle, so delivering is always safe. */
+/** Drop zone, tucked in a corner away from the loot pile. */
 export const BASKET: Circle = { x: 1150, y: 620, r: 110 };
 
 /** Logic circles (grab hit areas are larger, scene-side — touch fairness). */
@@ -49,10 +47,6 @@ export function isCovered(ball: Vec2, bones: Vec2[]): boolean {
     return bones.some((bone) =>
         circlesOverlap({ ...ball, r: BALL_RADIUS }, { ...bone, r: BONE_RADIUS })
     );
-}
-
-export function isInDanger(p: Vec2): boolean {
-    return Math.hypot(p.x - DOG_POS.x, p.y - DOG_POS.y) <= DANGER_RADIUS;
 }
 
 export function isInBasket(p: Vec2): boolean {

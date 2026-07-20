@@ -5,19 +5,17 @@ import { createOverlayElement } from '../../../ui/domOverlay';
 import { runFailFlow } from '../failFlow';
 import { SceneKeys } from '../../keys';
 import { MiniGameScene } from '../MiniGameScene';
-import { cycleTimings, initialDogState, stepDog } from './dogCycle';
-import type { CycleTimings, DogPhase, DogState } from './dogCycle';
+import { dogPhaseForNoise } from './dogPhase';
+import type { DogPhase } from './dogPhase';
 import { NOISE_MAX, stepNoise } from './noise';
 import {
     BALL_STARTS,
     BASKET,
     BONE_STARTS,
-    DANGER_RADIUS,
     DOG_POS,
     clampToPlayBounds,
     isCovered,
-    isInBasket,
-    isInDanger
+    isInBasket
 } from './layout';
 
 /**
@@ -25,10 +23,11 @@ import {
  * (PLAN.md §3.10 signed-off, like twin-stick/lane mode): played entirely by
  * mouse/touch drag, no virtual pad. Bones are obstacles — drag them aside to
  * uncover the balls, then sneak each ball to the basket. Dragging fast makes
- * noise (yanking a still-covered ball is 3× louder) and noise wakes the dog
- * sooner. The dog telegraphs (stir) before waking; holding the pointer down
- * inside the danger circle while it is awake = bitten → banner → ending
- * video → Retry / Give up (../failFlow.ts). Deliver every ball to win.
+ * noise (yanking a still-covered ball is 3× louder); the noise meter IS the
+ * danger (家有惡狗 model). The dog stirs as a warning once noise is high, and
+ * the instant noise maxes out it wakes and bites → banner → ending video →
+ * Retry / Give up (../failFlow.ts). Freezing lets the meter decay, so a cool
+ * head recovers. Deliver every ball to win.
  * Placeholder art — replacement sizes in public/assets/images/bone-heist/README.md.
  */
 
@@ -54,13 +53,11 @@ const BAR_Y = 32;
 const BAR_W = 320;
 const BAR_H = 20;
 
-const DANGER_STYLE: Record<DogPhase, { color: number; alpha: number }> = {
-    sleep: { color: 0xffffff, alpha: 0.08 },
-    stir: { color: 0xffe066, alpha: 0.16 },
-    awake: { color: 0xff4444, alpha: 0.26 }
-};
 const STIR_TINT = 0xffe066;
 const AWAKE_TINT = 0xff5a5a;
+/** Noise-bar fill: calm orange while safe, red once the dog stirs. */
+const NOISE_FILL_CALM = 0xffa94d;
+const NOISE_FILL_WARN = 0xff5a5a;
 
 const TEX_DOG = 'bone-heist-dog';
 const TEX_BONE = 'bone-heist-bone';
@@ -74,11 +71,9 @@ export class BoneHeistMiniGame extends MiniGameScene {
     private state: BoneHeistState = 'running';
     private noise = 0;
     private pendingDragPx = 0;
-    private timings!: CycleTimings;
-    private dogState!: DogState;
+    private dogPhase: DogPhase = 'sleep';
     private dogSprite!: Phaser.GameObjects.Image;
     private dogBaseScale = { x: 1, y: 1 };
-    private dangerCircle!: Phaser.GameObjects.Arc;
     private balls: Phaser.GameObjects.Image[] = [];
     private bones: Phaser.GameObjects.Image[] = [];
     private delivered = 0;
@@ -108,6 +103,7 @@ export class BoneHeistMiniGame extends MiniGameScene {
         this.state = 'running';
         this.noise = 0;
         this.pendingDragPx = 0;
+        this.dogPhase = 'sleep';
         this.balls = [];
         this.bones = [];
         this.delivered = 0;
@@ -119,13 +115,6 @@ export class BoneHeistMiniGame extends MiniGameScene {
         setVirtualPadVisible(false);
 
         this.cameras.main.setBackgroundColor('#2c2418');
-        this.dangerCircle = this.add.circle(
-            DOG_POS.x,
-            DOG_POS.y,
-            DANGER_RADIUS,
-            DANGER_STYLE.sleep.color,
-            DANGER_STYLE.sleep.alpha
-        );
 
         this.add
             .image(BASKET.x, BASKET.y, TEX_BASKET)
@@ -142,21 +131,21 @@ export class BoneHeistMiniGame extends MiniGameScene {
         this.dogSprite = this.add.image(DOG_POS.x, DOG_POS.y, TEX_DOG).setDepth(DEPTH_DOG);
         this.dogSprite.setDisplaySize(DOG_SIZE.w, DOG_SIZE.h);
         this.dogBaseScale = { x: this.dogSprite.scaleX, y: this.dogSprite.scaleY };
-        this.timings = cycleTimings();
-        this.dogState = initialDogState(this.timings);
-        this.applyDogPhase('sleep');
 
         // Noise bar top-left (game-scene UI, no text → Phaser, not DOM — §3.8);
-        // top-center is the dog's, bottom is where thumbs work.
+        // top-center is the dog's, bottom is where thumbs work. Built before the
+        // first applyDogPhase, which tints this fill.
         this.add
             .rectangle(BAR_X + BAR_W / 2, BAR_Y, BAR_W + 8, BAR_H + 8)
             .setStrokeStyle(4, 0xffffff)
             .setDepth(DEPTH_HUD);
         this.noiseFill = this.add
-            .rectangle(BAR_X, BAR_Y, BAR_W, BAR_H, 0xffa94d)
+            .rectangle(BAR_X, BAR_Y, BAR_W, BAR_H, NOISE_FILL_CALM)
             .setOrigin(0, 0.5)
             .setScale(0, 1)
             .setDepth(DEPTH_HUD);
+
+        this.applyDogPhase('sleep');
 
         this.input.on(Phaser.Input.Events.DRAG_START, this.onDragStart, this);
         this.input.on(Phaser.Input.Events.DRAG, this.onDrag, this);
@@ -269,26 +258,25 @@ export class BoneHeistMiniGame extends MiniGameScene {
         this.pendingDragPx = 0;
         this.noiseFill.setScale(this.noise / NOISE_MAX, 1);
 
-        const prevPhase = this.dogState.phase;
-        this.dogState = stepDog(this.dogState, delta, this.noise, this.timings);
-        if (this.dogState.phase !== prevPhase) {
-            this.applyDogPhase(this.dogState.phase);
-        }
-
-        const pointer = this.input.activePointer;
-        if (
-            this.dogState.phase === 'awake' &&
-            pointer.isDown &&
-            isInDanger({ x: pointer.worldX, y: pointer.worldY })
-        ) {
+        // The meter IS the danger: high noise stirs the dog, a maxed bar wakes
+        // it and bites. Phase is a pure function of the current noise level.
+        const phase = dogPhaseForNoise(this.noise);
+        if (phase === 'awake') {
             this.onBite();
+            return;
+        }
+        if (phase !== this.dogPhase) {
+            this.dogPhase = phase;
+            this.applyDogPhase(phase);
         }
     }
 
-    /** Telegraph is pure visuals at the top of the screen — no text, no hover. */
-    private applyDogPhase(phase: DogPhase): void {
-        const style = DANGER_STYLE[phase];
-        this.dangerCircle.setFillStyle(style.color, style.alpha);
+    /**
+     * Telegraph is pure visuals — no text, no hover. Only 'sleep' and 'stir'
+     * reach here; 'awake' is the bite, owned by onBite().
+     */
+    private applyDogPhase(phase: 'sleep' | 'stir'): void {
+        this.noiseFill.setFillStyle(phase === 'stir' ? NOISE_FILL_WARN : NOISE_FILL_CALM);
         this.tweens.killTweensOf(this.dogSprite);
         this.dogSprite.setScale(this.dogBaseScale.x, this.dogBaseScale.y);
         this.dogSprite.setPosition(DOG_POS.x, DOG_POS.y);
@@ -302,7 +290,7 @@ export class BoneHeistMiniGame extends MiniGameScene {
                 repeat: -1,
                 ease: 'Sine.easeInOut'
             });
-        } else if (phase === 'stir') {
+        } else {
             this.dogSprite.setTint(STIR_TINT);
             this.tweens.add({
                 targets: this.dogSprite,
@@ -311,9 +299,6 @@ export class BoneHeistMiniGame extends MiniGameScene {
                 yoyo: true,
                 repeat: -1
             });
-        } else {
-            this.dogSprite.setTint(AWAKE_TINT);
-            this.dogSprite.setScale(this.dogBaseScale.x * 1.12, this.dogBaseScale.y * 1.12);
         }
     }
 

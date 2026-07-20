@@ -3,14 +3,11 @@ import {
     BALL_STARTS,
     BASKET,
     BONE_STARTS,
-    DANGER_RADIUS,
-    DOG_POS,
     PLAY_BOUNDS,
     circlesOverlap,
     clampToPlayBounds,
     isCovered,
-    isInBasket,
-    isInDanger
+    isInBasket
 } from '../src/scenes/minigames/bone-heist/layout';
 
 describe('bone-heist circle checks', () => {
@@ -27,12 +24,6 @@ describe('bone-heist circle checks', () => {
         expect(isCovered(ball, [{ x: 400, y: 500 }])).toBe(false);
         expect(isCovered(ball, [{ x: 400, y: 500 }, { x: 440, y: 400 }])).toBe(true);
         expect(isCovered(ball, [])).toBe(false);
-    });
-
-    it('isInDanger: inside and on the edge count, outside does not', () => {
-        expect(isInDanger(DOG_POS)).toBe(true);
-        expect(isInDanger({ x: DOG_POS.x + DANGER_RADIUS, y: DOG_POS.y })).toBe(true);
-        expect(isInDanger({ x: DOG_POS.x + DANGER_RADIUS + 1, y: DOG_POS.y })).toBe(false);
     });
 
     it('isInBasket: inside and on the edge count, outside does not', () => {
@@ -58,20 +49,10 @@ describe('bone-heist board invariants', () => {
         }
     });
 
-    it('all loot starts inside the danger circle — the risk is real', () => {
-        for (const p of [...BALL_STARTS, ...BONE_STARTS]) {
-            expect(isInDanger(p)).toBe(true);
-        }
-    });
-
     it('all loot starts inside the drag bounds', () => {
         for (const p of [...BALL_STARTS, ...BONE_STARTS]) {
             expect(clampToPlayBounds(p)).toEqual(p);
         }
-    });
-
-    it('the basket sits outside the danger circle — delivering is always safe', () => {
-        expect(isInDanger({ x: BASKET.x, y: BASKET.y })).toBe(false);
     });
 
     it('the basket is reachable inside the drag bounds', () => {

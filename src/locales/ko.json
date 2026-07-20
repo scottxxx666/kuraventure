@@ -34,7 +34,7 @@
     "minigame.jumpRope.failed": "걸렸다!",
     "minigame.jumpRope.retry": "다시 도전",
     "minigame.jumpRope.quit": "포기",
-    "minigame.boneHeist.prompt": "뼈를 치우고 공을 바구니로 몰래 옮기세요 — 개가 뒤척이면 멈추세요!",
+    "minigame.boneHeist.prompt": "뼈를 치우고 공을 바구니로 몰래 옮기세요 — 천천히 움직이세요, 시끄러우면 개가 깨어나요!",
     "minigame.boneHeist.failed": "덥석!",
     "minigame.boneHeist.retry": "다시 도전",
     "minigame.boneHeist.quit": "포기",

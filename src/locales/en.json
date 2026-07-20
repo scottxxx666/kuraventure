@@ -34,7 +34,7 @@
     "minigame.jumpRope.failed": "Tripped!",
     "minigame.jumpRope.retry": "Retry",
     "minigame.jumpRope.quit": "Give up",
-    "minigame.boneHeist.prompt": "Drag the bones aside and sneak the balls to the basket — freeze when the dog stirs!",
+    "minigame.boneHeist.prompt": "Drag the bones aside and sneak the balls to the basket — move slowly, the dog wakes if you get too loud!",
     "minigame.boneHeist.failed": "Chomp!",
     "minigame.boneHeist.retry": "Retry",
     "minigame.boneHeist.quit": "Give up",
