@@ -13,12 +13,14 @@ import { BootScene } from './scenes/BootScene';
 import { DialogueScene } from './scenes/DialogueScene';
 import { MainMenuScene } from './scenes/MainMenuScene';
 import { TemplateMiniGame } from './scenes/minigames/_template/TemplateMiniGame';
+import { BoneHeistMiniGame } from './scenes/minigames/bone-heist/BoneHeistMiniGame';
 import { CartCarryMiniGame } from './scenes/minigames/cart-carry/CartCarryMiniGame';
 import { DanceMiniGame } from './scenes/minigames/dance/DanceMiniGame';
 import { FlappyMiniGame } from './scenes/minigames/flappy/FlappyMiniGame';
 import { JumpQuestMiniGame } from './scenes/minigames/jump-quest/JumpQuestMiniGame';
 import { JumpRopeMiniGame } from './scenes/minigames/jump-rope/JumpRopeMiniGame';
 import { PizzaRunMiniGame } from './scenes/minigames/pizza-run/PizzaRunMiniGame';
+import { TimeToShineMiniGame } from './scenes/minigames/time-to-shine/TimeToShineMiniGame';
 import { PreloadScene } from './scenes/PreloadScene';
 import { StageSelectScene } from './scenes/StageSelectScene';
 import { TalkScene } from './scenes/TalkScene';
@@ -43,7 +45,9 @@ const game = new Phaser.Game({
         CartCarryMiniGame,
         DanceMiniGame,
         JumpQuestMiniGame,
-        JumpRopeMiniGame
+        JumpRopeMiniGame,
+        BoneHeistMiniGame,
+        TimeToShineMiniGame
     ]
 });
 

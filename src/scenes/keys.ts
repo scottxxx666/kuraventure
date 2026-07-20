@@ -14,7 +14,9 @@ export const SceneKeys = {
     CartCarry: 'CartCarry',
     Dance: 'Dance',
     JumpQuest: 'JumpQuest',
-    JumpRope: 'JumpRope'
+    JumpRope: 'JumpRope',
+    BoneHeist: 'BoneHeist',
+    TimeToShine: 'TimeToShine'
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

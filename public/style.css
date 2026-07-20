@@ -195,7 +195,8 @@ html:lang(ja) #ui-overlay {
 /* Mini-game score/count readouts (dance score, jump-rope jump counter):
    top-center like .hud-prompt, shown while the run plays. */
 .dance-score,
-.jump-rope-count {
+.jump-rope-count,
+.time-to-shine-score {
     position: absolute;
     top: calc(var(--px) * 6px);
     left: 0;
@@ -213,7 +214,76 @@ html:lang(ja) #ui-overlay {
 .flappy-failed,
 .cart-carry-failed,
 .dance-failed,
-.jump-rope-failed {
+.jump-rope-failed,
+.bone-heist-failed,
+.time-to-shine-failed {
+    color: #ff5a5a;
+}
+
+/* Time to Shine (src/scenes/minigames/time-to-shine/): canvas-aligned wrapper
+   (same trick as .vpad-lanes) holding the watch/your-turn cue and transient
+   judgment popups — positions below are percentages of 1280×720 canvas space;
+   keep in sync with the layout constants in TimeToShineMiniGame.ts. */
+.time-to-shine-stage {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(100vw, calc(100vh * 1280 / 720));
+    aspect-ratio: 1280 / 720;
+}
+
+/* Canvas (640, 120) — over the curtain, clear of the host's pose arrow. */
+.time-to-shine-cue {
+    position: absolute;
+    top: 13%;
+    left: 0;
+    right: 0;
+    width: fit-content;
+    margin: 0 auto;
+    font-size: calc(var(--px) * 12px);
+    color: #ffe27a;
+}
+
+.time-to-shine-cue[data-phase='respond'] {
+    color: #7cf0c0;
+}
+
+/* Spawns at canvas (640, ~430), floats up in whole-pixel steps and fades;
+   the scene removes the node right after the animation ends. */
+.time-to-shine-judgment {
+    position: absolute;
+    top: 56%;
+    left: 0;
+    right: 0;
+    width: fit-content;
+    margin: 0 auto;
+    font-size: calc(var(--px) * 12px);
+    animation: time-to-shine-float 0.6s steps(4, end) forwards;
+}
+
+@keyframes time-to-shine-float {
+    to {
+        transform: translateY(calc(var(--px) * -8px));
+        opacity: 0;
+    }
+}
+
+.time-to-shine-judgment.is-perfect {
+    color: #7cfc7c;
+}
+
+.time-to-shine-judgment.is-nice {
+    color: #f0d060;
+}
+
+.time-to-shine-judgment.is-early,
+.time-to-shine-judgment.is-late {
+    color: #ff9a5a;
+}
+
+.time-to-shine-judgment.is-wrong,
+.time-to-shine-judgment.is-miss {
     color: #ff5a5a;
 }
 

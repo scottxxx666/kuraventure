@@ -80,6 +80,22 @@ export const demoStage: StageDef = {
             once: false
         },
         {
+            // Optional + repeatable, like pizza-run.
+            id: 'bone-heist',
+            at: { objectName: 'trigger-bone' },
+            activity: { type: 'minigame', sceneKey: SceneKeys.BoneHeist },
+            required: false,
+            once: false
+        },
+        {
+            // Optional + repeatable, like pizza-run.
+            id: 'time-to-shine',
+            at: { objectName: 'trigger-shine' },
+            activity: { type: 'minigame', sceneKey: SceneKeys.TimeToShine },
+            required: false,
+            once: false
+        },
+        {
             // Optional + repeatable so the video/skip/locales can be re-tested freely.
             id: 'intro-video',
             at: { objectName: 'trigger-video' },

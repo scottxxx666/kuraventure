@@ -495,6 +495,14 @@ export interface GameInput {
   are per-source like buttons, so chords (two lanes at once) work. Toggling clears
   held-lane and direction state. Same OFF rule as twin-stick: SHUTDOWN **and before
   `runFailFlow`**.
+- **Pointer mode** (user-signed-off exception, currently used only by the bone-heist
+  mini-game): the scene reads Phaser pointer input directly (drag events,
+  `input.activePointer`) instead of `InputService` — pointer events unify mouse and
+  touch with no per-platform code. The scene hides the whole virtual pad with
+  `setVirtualPadVisible(false)` in `create()` (VideoScene precedent) and restores it
+  on SHUTDOWN **and before `runFailFlow`** (the fail-video skip is an A-press).
+  Design rules that follow: no hover-dependent mechanics, generous grab hit areas
+  (~1.4×), and critical cues placed where the dragging finger can't cover them.
 - **Landscape only** (confirmed): `ui/rotateOverlay.ts` covers the screen with a
   localized "rotate your device" prompt while a touch device is portrait (pure CSS
   media query toggles it). The start-game gesture also enters browser fullscreen and,
@@ -619,6 +627,16 @@ Remaining:
    with no cue up both fail. Rope
    phase/window logic is pure in `timing.ts` (vitest-covered); all six figures
    are runtime-generated placeholder blobs to be replaced with IZ*ONE art.
+   Also done: **Time to Shine** (`scenes/minigames/time-to-shine/`, see its
+   DESIGN.md), a call-and-response pose-copying rhythm game (Mario Party's
+   Time to Shine × Rhythm Tengoku): the spotlit host strikes direction poses
+   on the beat, then the player repeats the phrase via lane mode (§3.10);
+   phrases grow over 8 rounds, later ones mixing half-slot doubles and rests.
+   Only Perfect/Nice score; the run always completes and a 60% threshold
+   decides win/fail (shared fail flow). All cues are synthesized WebAudio
+   blips (a pitch per lane, metronome + count-in) so it plays by ear with no
+   audio asset; chart generation is pure in `rounds.ts` (vitest-covered) and
+   the A/B/C enhancements toggle in `features.ts`.
 9. **Polish** — responsive `Scale.FIT` tuning, transitions, audio, credits. TBD scope.
 
 **Do not run build/test/lint scripts — the user runs them manually.** Write tests;
