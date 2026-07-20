@@ -74,22 +74,35 @@ y≈560 (bottom strip belongs to the tap zones).
 
 ## "When do I press?" cues
 
-The game is a **light memory game**, not a timing test — the beat is flavor.
-Still, the response phase needs to signal *when* each remembered pose is due
-(without revealing *which* — that stays in memory).
+The game is a **memory + rhythm game**, not a per-note reaction test. The player
+watched the host's rhythm during the demo, so the response is reproduced from
+memory against the beat — no per-note "press now" telegraph. This mirrors
+Headbangers *Rhythm Royale*: the "your turn" prompt teaches the hand-over **once**,
+then the steady tempo (a predictable, always-on channel) carries every following
+turn.
 
-**Implemented — approach ring (visual).** `driveTelegraph()` draws a shrinking
-ring (`noteRing`) that converges onto the next pending response dot and closes
-exactly at its hit time (osu!-style approach circle), plus a `DOT_READY`
-brighten on the active dot. One-beat lead (`TELEGRAPH_LEAD_MS = BEAT_MS`, ==
-`MIN_NOTE_GAP_MS`) so a double never shows two rings. Ring math is the pure
-`approachFrac` in `judgment.ts`. Reuses the radial-gauge idea from
-`jump-rope/JumpRopeMiniGame.ts`.
+**Implemented — show-once hand-over + audio beat.** The only explicit cues are:
 
-**Planned — response-beat audio cue (Option B).** Complements the ring for
-muted/touch play and gives the Rhythm-Heaven "play by ear" feel. Today
-`driveBeats()` ticks every beat identically; instead give the beats that carry a
-*response* note a distinct accent/pitch — a "call" tone via `ShineSynth`
-(`sound.ts`) — so the ear leads the press. Independent of Option A; can layer on
-top. Keep it muted while a real music track plays (same rule as the metronome,
-`driveBeats`).
+- **"Your turn" text, first round only.** `applyPhase()` shows `watch` then the
+  first `your turn`; after the first hand-over the `turnHinted` flag keeps the
+  cue silent for the rest of the run.
+- **Spotlight swap** (`hostLight`/`playerLight` alpha) — ambient whose-turn
+  staging, every round. Tells you the *phase*, not per-note timing.
+- **Count-in metronome** (`driveBeats`/`countInStep`) — two synth beats in the
+  rest slot before each response, plus the steady tick. The rhythmic channel the
+  player presses against. Muted while a real music track plays.
+
+Mistakes are still surfaced in full — wrong direction (`wrong`), off-timing
+(`early`/`late`), and unhit notes (`miss`) all paint the dot and float a judgment
+popup (`paintDot`/`showPopup`). The cue teaches; the judgment corrects.
+
+**Removed — approach ring (`driveTelegraph`).** Previously a shrinking osu!-style
+ring converged onto the next dot at its hit time. Dropped deliberately: it made
+the game a follow-the-ring reaction test and hid the memory/rhythm skill the mode
+is built around. `approachFrac` stays in `judgment.ts` (unused here) in case a
+softer opt-in cue is wanted later.
+
+**Possible later — response-beat audio accent.** For muted/touch play, give beats
+that carry a *response* note a distinct accent/pitch via `ShineSynth` so the ear
+leads the press, without any visual telegraph. Keep it muted while a real music
+track plays (same rule as the metronome).
