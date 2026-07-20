@@ -18,7 +18,7 @@ export const NICE_WINDOW_MS = 250;
  * under half the minimum note gap (rounds.ts MIN_NOTE_GAP_MS) only for the
  * scoring windows — binding may overlap, nearest-note search disambiguates.
  */
-export const CUTOFF_MS = 450;
+export const CUTOFF_MS = 300;
 
 export const SCORE: Readonly<Record<ScoringJudgment, number>> = { perfect: 100, nice: 60 };
 

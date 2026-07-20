@@ -26,7 +26,7 @@ shared fail flow runs (same policy as dance).
 
 ## Judgment
 
-- Windows: perfect ±100 ms, nice ±250 ms, binding cutoff ±450 ms. Score
+- Windows: perfect ±100 ms, nice ±250 ms, binding cutoff ±300 ms. Score
   perfect 100 / nice 60, win ratio 0.6 of the all-perfect maximum.
 - A press **binds to and consumes** the nearest pending response note within
   the cutoff (earlier wins ties), whatever the direction — wrong direction
@@ -93,12 +93,13 @@ ring on the progress circles:
   the timing cue, not ambience, so it rides on top of a track rather than
   yielding to it). Synthesized (LFO warble on a ~2.1 kHz sine), no asset.
 - **Per-note ring on the progress circle** (`driveNoteRing`) — during the
-  response phase a ring fades in large on the next unhit progress circle two
-  beats out and shrinks to close on that note's beat (osu!-style approach circle,
-  `approachFrac` with a 2-beat lead + a short alpha fade-in so it doesn't pop).
-  It tells you *which* circle is next and *when* to press, but never *which
-  direction* — that stays in memory. Nothing is drawn until the approach window
-  opens.
+  response phase a ring appears large on the next unhit progress circle one beat
+  out and shrinks fast to hug the circle at that note's beat (osu!-style approach
+  circle, one-beat lead). Past the beat it keeps collapsing to nothing and fades
+  out across the binding window, ending exactly as the note expires — so it never
+  dwells as a static ring. It tells you *which* circle is next and *when* to
+  press, but never *which direction* — that stays in memory. Nothing is drawn
+  until the approach window opens.
 - **Spotlight swap** (`hostLight`/`playerLight` alpha) — ambient whose-turn
   staging. Tells you the *phase*, not per-note timing. Flips to the player one
   slot before their notes start, giving a get-ready lead (SMP's "light").

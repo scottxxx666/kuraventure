@@ -9,7 +9,7 @@ import { runFailFlow } from '../failFlow';
 import { SceneKeys } from '../../keys';
 import { MiniGameScene } from '../MiniGameScene';
 import { SHINE_FEATURES } from './features';
-import { CUTOFF_MS, SCORE, approachFrac, isScoring, judgePress, winScore } from './judgment';
+import { CUTOFF_MS, SCORE, isScoring, judgePress, winScore } from './judgment';
 import type { Feedback } from './judgment';
 import { LANE_ROTATION } from './lanes';
 import type { Lane } from './lanes';
@@ -51,14 +51,14 @@ const PLAYER_TINT = 0x7ac0f0;
 const ARROW_TINT = 0xffe27a;
 const DOT_IDLE = 0x555070;
 
-// Per-note ring on the active progress circle: it sits on the next unhit
-// circle and shrinks to close exactly on that note's beat during the player's
-// turn — telling you *which* circle and *when*. The direction stays in memory
-// (only revealed on an error), so this isn't a full follow-the-cue test.
-const DOT_RING_MIN_R = 20; // radius at the beat (closed) — hugs just outside the circle
-const DOT_RING_MARGIN_R = 30; // extra radius at the top of the approach
-const DOT_RING_LEAD_MS = BEAT_MS * 2; // approach window — a 2-beat shrink reads easier than 1
-const DOT_RING_FADE_MS = 120; // alpha fade-in as the ring appears, so it doesn't pop
+// Per-note ring on the active progress circle: it appears large on the next
+// unhit circle one beat out, shrinks to hug the circle at the beat, then past
+// the beat keeps collapsing to nothing while fading out over the binding window
+// — so it never dwells as a static "normal circle". It tells you *which* circle
+// and *when*; the direction stays in memory (revealed only on an error).
+const DOT_RING_MIN_R = 20; // radius at the beat — hugs just outside the circle
+const DOT_RING_MARGIN_R = 10; // extra radius at the top of the approach
+const DOT_RING_LEAD_MS = BEAT_MS; // approach window — a fast one-beat shrink
 const DOT_RING_WIDTH = 4;
 const DOT_RING_COLOR = 0xffe27a;
 const DOT_RING_ALPHA = 0.9;
@@ -374,10 +374,11 @@ export class TimeToShineMiniGame extends MiniGameScene {
 
     /**
      * Per-note ring on the active progress circle during the player's turn: it
-     * fades in large on the next unhit circle two beats out and shrinks to close
-     * on that note's beat (osu!-style approach circle). It reveals *which* circle
-     * and *when*, but never the direction — that stays in memory until an error
-     * reveals it. Hidden until the approach window opens, so no static "next up".
+     * appears large on the next unhit circle one beat out and shrinks to hug the
+     * circle at that note's beat (osu!-style approach circle). Past the beat it
+     * keeps collapsing to nothing and fades out across the binding window, so it
+     * never dwells as a static ring — the note also expires there. It reveals
+     * *which* circle and *when*, but never the direction — that stays in memory.
      */
     private driveNoteRing(): void {
         this.noteRing.clear();
@@ -401,11 +402,21 @@ export class TimeToShineMiniGame extends MiniGameScene {
         if (remaining > DOT_RING_LEAD_MS) {
             return; // approach window not open yet — nothing drawn
         }
-        // frac 1 at the top of the window → 0 at (and after) the hit: large→small.
-        const frac = approachFrac(target.note.timeMs, this.songTimeMs, DOT_RING_LEAD_MS);
-        const radius = DOT_RING_MIN_R + DOT_RING_MARGIN_R * frac;
-        const fadeIn = Phaser.Math.Clamp((DOT_RING_LEAD_MS - remaining) / DOT_RING_FADE_MS, 0, 1);
-        this.noteRing.lineStyle(DOT_RING_WIDTH, DOT_RING_COLOR, DOT_RING_ALPHA * fadeIn);
+        let radius: number;
+        let alpha: number;
+        if (remaining >= 0) {
+            // Approach: large → min at the beat, full alpha.
+            const frac = remaining / DOT_RING_LEAD_MS; // 1 at the top → 0 at the beat
+            radius = DOT_RING_MIN_R + DOT_RING_MARGIN_R * frac;
+            alpha = DOT_RING_ALPHA;
+        } else {
+            // Past the beat: collapse min → 0 and fade out over the binding window
+            // (ends exactly as the note expires) instead of holding closed.
+            const t = Phaser.Math.Clamp(-remaining / CUTOFF_MS, 0, 1); // 0 → 1 across the trailing window
+            radius = DOT_RING_MIN_R * (1 - t);
+            alpha = DOT_RING_ALPHA * (1 - t);
+        }
+        this.noteRing.lineStyle(DOT_RING_WIDTH, DOT_RING_COLOR, alpha);
         this.noteRing.strokeCircle(dot.x, dot.y, radius);
     }
 
