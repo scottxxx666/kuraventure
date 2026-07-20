@@ -5,6 +5,7 @@ import {
     PERFECT_WINDOW_MS,
     SCORE,
     WIN_RATIO,
+    approachFrac,
     isScoring,
     judgePress,
     winScore
@@ -75,5 +76,28 @@ describe('time to shine window geometry', () => {
 
     it('expires notes only after the whole binding window has passed', () => {
         expect(CUTOFF_MS).toBeGreaterThanOrEqual(NICE_WINDOW_MS);
+    });
+});
+
+describe('time to shine approachFrac', () => {
+    const LEAD = 600;
+    const NOTE = 5000;
+
+    it('is 0 before the lead window opens', () => {
+        expect(approachFrac(NOTE, NOTE - LEAD - 1, LEAD)).toBe(0);
+        expect(approachFrac(NOTE, 0, LEAD)).toBe(0);
+    });
+
+    it('is 1 exactly one lead-length before the note', () => {
+        expect(approachFrac(NOTE, NOTE - LEAD, LEAD)).toBe(1);
+    });
+
+    it('falls linearly across the lead window', () => {
+        expect(approachFrac(NOTE, NOTE - LEAD / 2, LEAD)).toBe(0.5);
+    });
+
+    it('is 0 at the hit time and after (remaining <= 0)', () => {
+        expect(approachFrac(NOTE, NOTE, LEAD)).toBe(0);
+        expect(approachFrac(NOTE, NOTE + 100, LEAD)).toBe(0);
     });
 });

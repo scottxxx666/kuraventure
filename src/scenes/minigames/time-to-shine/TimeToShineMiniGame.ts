@@ -9,7 +9,7 @@ import { runFailFlow } from '../failFlow';
 import { SceneKeys } from '../../keys';
 import { MiniGameScene } from '../MiniGameScene';
 import { SHINE_FEATURES } from './features';
-import { CUTOFF_MS, SCORE, isScoring, judgePress, winScore } from './judgment';
+import { CUTOFF_MS, SCORE, approachFrac, isScoring, judgePress, winScore } from './judgment';
 import type { Feedback } from './judgment';
 import { LANE_ROTATION } from './lanes';
 import type { Lane } from './lanes';
@@ -50,6 +50,13 @@ const HOST_TINT = 0xb08ae8;
 const PLAYER_TINT = 0x7ac0f0;
 const ARROW_TINT = 0xffe27a;
 const DOT_IDLE = 0x555070;
+/** The dot the player is on right now — brighter than idle while its ring closes. */
+const DOT_READY = 0xb7b0e0;
+/** One-beat lead == MIN_NOTE_GAP_MS, so a double's two notes never ring at once. */
+const TELEGRAPH_LEAD_MS = BEAT_MS;
+const RING_MARGIN = 22; // ring radius at frac 1, shrinking onto the dot at the hit
+const RING_WIDTH = 4;
+const RING_COLOR = 0xffe27a;
 const DOT_COLOR: Record<Feedback | 'miss', number> = {
     perfect: 0x7cfc7c,
     nice: 0xf0d060,
@@ -108,6 +115,7 @@ export class TimeToShineMiniGame extends MiniGameScene {
     private hostLight!: Phaser.GameObjects.Graphics;
     private playerLight!: Phaser.GameObjects.Graphics;
     private dots: Phaser.GameObjects.Sprite[] = [];
+    private noteRing!: Phaser.GameObjects.Graphics;
     private stageEl: HTMLElement | null = null;
     private cueEl: HTMLElement | null = null;
     private promptEl: HTMLElement | null = null;
@@ -186,6 +194,7 @@ export class TimeToShineMiniGame extends MiniGameScene {
         this.driveRound();
         this.driveDemo();
         this.driveResponse();
+        this.driveTelegraph();
         this.driveBeats();
 
         if (this.songTimeMs >= this.endMs) {
@@ -338,6 +347,37 @@ export class TimeToShineMiniGame extends MiniGameScene {
         }
     }
 
+    /**
+     * Approach ring on the next pending response dot: a circle that shrinks
+     * onto the dot and closes exactly at its hit time — the "press now" cue
+     * for the memory phase. Only the *when* is shown; the lane stays in the
+     * player's memory. respIdx is current here (after driveResponse), so it
+     * points at the next not-done note.
+     */
+    private driveTelegraph(): void {
+        this.noteRing.clear();
+        if (this.state !== 'running' || !this.inResponse) {
+            return;
+        }
+        const runtime = this.responseNotes[this.respIdx];
+        if (!runtime || runtime.done || runtime.note.roundIndex !== this.roundIdx) {
+            return;
+        }
+        const frac = approachFrac(runtime.note.timeMs, this.songTimeMs, TELEGRAPH_LEAD_MS);
+        if (frac <= 0) {
+            return;
+        }
+        const dot = this.dots[runtime.note.noteIndex];
+        if (!dot) {
+            return;
+        }
+        if (dot.tintTopLeft === DOT_IDLE) {
+            dot.setTint(DOT_READY); // don't stomp a note already judged/missed
+        }
+        this.noteRing.lineStyle(RING_WIDTH, RING_COLOR, 0.9);
+        this.noteRing.strokeCircle(dot.x, DOTS_Y, DOT_SIZE / 2 + RING_MARGIN * frac);
+    }
+
     /** Metronome + count-in, driven off the same beat grid as the chart. */
     private driveBeats(): void {
         const chart = this.chart;
@@ -411,6 +451,7 @@ export class TimeToShineMiniGame extends MiniGameScene {
         this.state = 'ended';
         this.music?.stop();
         this.disableLaneInput();
+        this.noteRing.clear();
 
         if (this.chart && this.score >= winScore(this.chart.responseNotes.length)) {
             this.time.delayedCall(WIN_BEAT_MS, () => this.completeActivity());
@@ -449,6 +490,10 @@ export class TimeToShineMiniGame extends MiniGameScene {
             .setOrigin(0.5, 1)
             .setTint(PLAYER_TINT);
         this.hostArrow = this.add.sprite(HOST_X, ARROW_Y, TEX_ARROW).setTint(ARROW_TINT).setVisible(false);
+
+        // Approach ring: drawn above the progress dots, telegraphs when to
+        // press the next remembered pose (driveTelegraph).
+        this.noteRing = this.add.graphics().setDepth(5);
 
         // Canvas-aligned DOM wrapper (the .vpad-lanes trick) for the phase cue
         // and judgment popups — screen-space text stays in the overlay (§3.8).

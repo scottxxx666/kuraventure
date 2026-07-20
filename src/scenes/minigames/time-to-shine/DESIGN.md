@@ -71,3 +71,25 @@ y≈560 (bottom strip belongs to the tap zones).
 - `lanes.ts` — lane constants (dance-identical; per-game copies stay local).
 - Optional assets: `assets/audio/time-to-shine.mp3` (≥ ~72 s ideal),
   `assets/video/time-to-shine-ending.mp4` (fail ending).
+
+## "When do I press?" cues
+
+The game is a **light memory game**, not a timing test — the beat is flavor.
+Still, the response phase needs to signal *when* each remembered pose is due
+(without revealing *which* — that stays in memory).
+
+**Implemented — approach ring (visual).** `driveTelegraph()` draws a shrinking
+ring (`noteRing`) that converges onto the next pending response dot and closes
+exactly at its hit time (osu!-style approach circle), plus a `DOT_READY`
+brighten on the active dot. One-beat lead (`TELEGRAPH_LEAD_MS = BEAT_MS`, ==
+`MIN_NOTE_GAP_MS`) so a double never shows two rings. Ring math is the pure
+`approachFrac` in `judgment.ts`. Reuses the radial-gauge idea from
+`jump-rope/JumpRopeMiniGame.ts`.
+
+**Planned — response-beat audio cue (Option B).** Complements the ring for
+muted/touch play and gives the Rhythm-Heaven "play by ear" feel. Today
+`driveBeats()` ticks every beat identically; instead give the beats that carry a
+*response* note a distinct accent/pitch — a "call" tone via `ShineSynth`
+(`sound.ts`) — so the ear leads the press. Independent of Option A; can layer on
+top. Keep it muted while a real music track plays (same rule as the metronome,
+`driveBeats`).

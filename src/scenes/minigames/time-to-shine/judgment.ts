@@ -47,3 +47,17 @@ export function isScoring(feedback: Feedback): feedback is ScoringJudgment {
 export function winScore(responseNoteCount: number): number {
     return Math.ceil(responseNoteCount * SCORE.perfect * WIN_RATIO);
 }
+
+/**
+ * Fill for the approach ring that telegraphs *when* to press the next
+ * remembered pose: 1 exactly one lead-length before the note, falling
+ * linearly to 0 at the hit time; 0 before the lead window opens and once the
+ * note is reached or past (remaining ≤ 0).
+ */
+export function approachFrac(noteMs: number, nowMs: number, leadMs: number): number {
+    const remaining = noteMs - nowMs;
+    if (remaining <= 0 || remaining > leadMs) {
+        return 0;
+    }
+    return remaining / leadMs;
+}
