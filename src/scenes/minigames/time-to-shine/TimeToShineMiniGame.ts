@@ -9,11 +9,11 @@ import { runFailFlow } from '../failFlow';
 import { SceneKeys } from '../../keys';
 import { MiniGameScene } from '../MiniGameScene';
 import { SHINE_FEATURES } from './features';
-import { CUTOFF_MS, SCORE, isScoring, judgePress, winScore } from './judgment';
+import { CUTOFF_MS, SCORE, approachFrac, isScoring, judgePress, winScore } from './judgment';
 import type { Feedback } from './judgment';
 import { LANE_ROTATION } from './lanes';
 import type { Lane } from './lanes';
-import { BEAT_MS, SLOT_MS, generateChart } from './rounds';
+import { BEAT_MS, generateChart } from './rounds';
 import type { Chart, PoseNote, Round } from './rounds';
 import { ShineSynth } from './sound';
 
@@ -42,7 +42,7 @@ const HOST_X = GAME_WIDTH / 2;
 const HOST_FEET_Y = 340;
 const ARROW_Y = 205;
 const DOTS_Y = 370;
-const DOT_SPACING = 34;
+const DOT_SPACING = 52;
 const PLAYER_FEET_Y = 525;
 /** Everything timing-critical stays above the touch lane zones (top 60% line, style.css). */
 
@@ -50,6 +50,18 @@ const HOST_TINT = 0xb08ae8;
 const PLAYER_TINT = 0x7ac0f0;
 const ARROW_TINT = 0xffe27a;
 const DOT_IDLE = 0x555070;
+
+// Per-note ring on the active progress circle: it sits on the next unhit
+// circle and shrinks to close exactly on that note's beat during the player's
+// turn — telling you *which* circle and *when*. The direction stays in memory
+// (only revealed on an error), so this isn't a full follow-the-cue test.
+const DOT_RING_MIN_R = 20; // radius at the beat (closed) — hugs just outside the circle
+const DOT_RING_MARGIN_R = 30; // extra radius at the top of the approach
+const DOT_RING_LEAD_MS = BEAT_MS * 2; // approach window — a 2-beat shrink reads easier than 1
+const DOT_RING_FADE_MS = 120; // alpha fade-in as the ring appears, so it doesn't pop
+const DOT_RING_WIDTH = 4;
+const DOT_RING_COLOR = 0xffe27a;
+const DOT_RING_ALPHA = 0.9;
 const DOT_COLOR: Record<Feedback | 'miss', number> = {
     perfect: 0x7cfc7c,
     nice: 0xf0d060,
@@ -72,7 +84,8 @@ const TEX_ARROW = 'tts-arrow';
 const TEX_DOT = 'tts-dot';
 const TEX_FIGURE = 'tts-figure';
 const ARROW_SIZE = 96;
-const DOT_SIZE = 16;
+const DOT_SIZE = 30;
+const DOT_ARROW_SCALE = 0.26; // 96px arrow texture → ~25px, fits inside a circle
 const MUSIC_KEY = 'tts-music';
 const ENDING_VIDEO_KEY = 'tts-ending';
 
@@ -99,8 +112,6 @@ export class TimeToShineMiniGame extends MiniGameScene {
     private nextBeatIdx = 0;
     private roundIdx = 0;
     private inResponse = false;
-    /** Headbangers-style: the "your turn" cue fires once, then the run goes quiet. */
-    private turnHinted = false;
     private arrowHideMs = 0;
     private music: Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound | null = null;
     private synth: ShineSynth = new ShineSynth(null);
@@ -110,6 +121,8 @@ export class TimeToShineMiniGame extends MiniGameScene {
     private hostLight!: Phaser.GameObjects.Graphics;
     private playerLight!: Phaser.GameObjects.Graphics;
     private dots: Phaser.GameObjects.Sprite[] = [];
+    private dotArrows: Phaser.GameObjects.Sprite[] = [];
+    private noteRing!: Phaser.GameObjects.Graphics;
     private stageEl: HTMLElement | null = null;
     private cueEl: HTMLElement | null = null;
     private promptEl: HTMLElement | null = null;
@@ -146,10 +159,10 @@ export class TimeToShineMiniGame extends MiniGameScene {
         this.nextBeatIdx = 0;
         this.roundIdx = 0;
         this.inResponse = false;
-        this.turnHinted = false;
         this.arrowHideMs = 0;
         this.music = null;
         this.dots = [];
+        this.dotArrows = [];
         this.scoreEl = null;
         this.failFlowCleanup = null;
         this.disableLaneInput(); // defensive — a restart must never inherit lane mode
@@ -190,6 +203,7 @@ export class TimeToShineMiniGame extends MiniGameScene {
         this.driveDemo();
         this.driveResponse();
         this.driveBeats();
+        this.driveNoteRing();
 
         if (this.songTimeMs >= this.endMs) {
             this.finishRun();
@@ -263,10 +277,6 @@ export class TimeToShineMiniGame extends MiniGameScene {
         setVirtualPadLaneMode(false);
     }
 
-    private currentRound(): Round | null {
-        return this.chart?.rounds[this.roundIdx] ?? null;
-    }
-
     /** Advances the round cursor and derives the watch/respond phase + visuals. */
     private driveRound(): void {
         const chart = this.chart;
@@ -289,22 +299,11 @@ export class TimeToShineMiniGame extends MiniGameScene {
     private applyPhase(): void {
         this.hostLight.setAlpha(this.inResponse ? LIGHT_OFF : LIGHT_ON);
         this.playerLight.setAlpha(this.inResponse ? LIGHT_ON : LIGHT_OFF);
-        if (!this.cueEl) {
-            return;
-        }
-        // Onboarding only: "watch" then the first "your turn". Once the player
-        // has handed over once, the cue stays silent — the beat/count-in and
-        // memory carry every following turn (Headbangers "your turn" shows once).
-        if (this.turnHinted) {
-            this.cueEl.textContent = '';
-            return;
-        }
-        this.cueEl.textContent = i18nService.t(
-            this.inResponse ? 'minigame.timeToShine.yourTurn' : 'minigame.timeToShine.watch'
-        );
-        this.cueEl.dataset.phase = this.inResponse ? 'respond' : 'watch';
-        if (this.inResponse) {
-            this.turnHinted = true; // first hand-over shown — go quiet from here
+        if (this.cueEl) {
+            this.cueEl.textContent = i18nService.t(
+                this.inResponse ? 'minigame.timeToShine.yourTurn' : 'minigame.timeToShine.watch'
+            );
+            this.cueEl.dataset.phase = this.inResponse ? 'respond' : 'watch';
         }
     }
 
@@ -352,7 +351,12 @@ export class TimeToShineMiniGame extends MiniGameScene {
         }
     }
 
-    /** Metronome + count-in, driven off the same beat grid as the chart. */
+    /**
+     * Constant whistle keeping the tempo — one blow every beat, all phases,
+     * and *over* the music too (SMP's Time to Shine: the whistle is the timing
+     * cue, so it rides on top of the track rather than yielding to it). Only a
+     * clock jump (stale beat) is skipped, so a seek can't burst a run of blows.
+     */
     private driveBeats(): void {
         const chart = this.chart;
         if (!chart) {
@@ -361,26 +365,48 @@ export class TimeToShineMiniGame extends MiniGameScene {
         while (this.nextBeatIdx * BEAT_MS <= this.songTimeMs) {
             const beatMs = this.nextBeatIdx * BEAT_MS;
             this.nextBeatIdx++;
-            // The music carries the beat itself; ticks would just fight it.
-            if (this.music?.isPlaying || this.songTimeMs - beatMs > SOUND_SLOP_MS) {
-                continue;
+            if (this.songTimeMs - beatMs > SOUND_SLOP_MS) {
+                continue; // clock jumped past this beat — stay silent
             }
-            const countInStep = this.countInStep(beatMs);
-            if (countInStep !== null) {
-                this.synth.countIn(countInStep);
-            } else {
-                this.synth.tick(beatMs % SLOT_MS === 0);
-            }
+            this.synth.whistle();
         }
     }
 
-    /** The hand-over rest slot's two beats become the count-in, null elsewhere. */
-    private countInStep(beatMs: number): 0 | 1 | null {
-        const round = this.currentRound();
-        if (round && beatMs >= round.demoEndMs && beatMs < round.responseStartMs) {
-            return beatMs - round.demoEndMs < BEAT_MS ? 0 : 1;
+    /**
+     * Per-note ring on the active progress circle during the player's turn: it
+     * fades in large on the next unhit circle two beats out and shrinks to close
+     * on that note's beat (osu!-style approach circle). It reveals *which* circle
+     * and *when*, but never the direction — that stays in memory until an error
+     * reveals it. Hidden until the approach window opens, so no static "next up".
+     */
+    private driveNoteRing(): void {
+        this.noteRing.clear();
+        if (!this.inResponse) {
+            return;
         }
-        return null;
+        let target: RuntimeNote | null = null;
+        for (let i = this.respIdx; i < this.responseNotes.length; i++) {
+            const runtime = this.responseNotes[i];
+            if (runtime.done || runtime.note.roundIndex !== this.roundIdx) {
+                continue;
+            }
+            target = runtime;
+            break;
+        }
+        const dot = target ? this.dots[target.note.noteIndex] : undefined;
+        if (!target || !dot) {
+            return; // trailing rest slot or between rounds — no circle to ring
+        }
+        const remaining = target.note.timeMs - this.songTimeMs;
+        if (remaining > DOT_RING_LEAD_MS) {
+            return; // approach window not open yet — nothing drawn
+        }
+        // frac 1 at the top of the window → 0 at (and after) the hit: large→small.
+        const frac = approachFrac(target.note.timeMs, this.songTimeMs, DOT_RING_LEAD_MS);
+        const radius = DOT_RING_MIN_R + DOT_RING_MARGIN_R * frac;
+        const fadeIn = Phaser.Math.Clamp((DOT_RING_LEAD_MS - remaining) / DOT_RING_FADE_MS, 0, 1);
+        this.noteRing.lineStyle(DOT_RING_WIDTH, DOT_RING_COLOR, DOT_RING_ALPHA * fadeIn);
+        this.noteRing.strokeCircle(dot.x, dot.y, radius);
     }
 
     private onLanePress(lane: Lane): void {
@@ -425,6 +451,7 @@ export class TimeToShineMiniGame extends MiniGameScene {
         this.state = 'ended';
         this.music?.stop();
         this.disableLaneInput();
+        this.noteRing.clear();
 
         if (this.chart && this.score >= winScore(this.chart.responseNotes.length)) {
             this.time.delayedCall(WIN_BEAT_MS, () => this.completeActivity());
@@ -464,6 +491,9 @@ export class TimeToShineMiniGame extends MiniGameScene {
             .setTint(PLAYER_TINT);
         this.hostArrow = this.add.sprite(HOST_X, ARROW_Y, TEX_ARROW).setTint(ARROW_TINT).setVisible(false);
 
+        // Per-note ring on the active progress circle (driveNoteRing), above the dots.
+        this.noteRing = this.add.graphics().setDepth(5);
+
         // Canvas-aligned DOM wrapper (the .vpad-lanes trick) for the phase cue
         // and judgment popups — screen-space text stays in the overlay (§3.8).
         this.stageEl = createOverlayElement('time-to-shine-stage');
@@ -492,7 +522,11 @@ export class TimeToShineMiniGame extends MiniGameScene {
         for (const dot of this.dots) {
             dot.destroy();
         }
+        for (const arrow of this.dotArrows) {
+            arrow?.destroy(); // sparse — only missed/wrong indices are set
+        }
         this.dots = [];
+        this.dotArrows = [];
         if (!round) {
             return;
         }
@@ -506,7 +540,22 @@ export class TimeToShineMiniGame extends MiniGameScene {
         if (note.roundIndex !== this.roundIdx) {
             return; // round already advanced (should not happen — guard only)
         }
-        this.dots[note.noteIndex]?.setTint(DOT_COLOR[result]);
+        const dot = this.dots[note.noteIndex];
+        dot?.setTint(DOT_COLOR[result]);
+        // A missed or wrong-direction note reveals the direction you should have
+        // pressed — the timing was ringed, but the arrow stayed in memory.
+        if (dot && (result === 'miss' || result === 'wrong')) {
+            let arrow = this.dotArrows[note.noteIndex];
+            if (!arrow) {
+                arrow = this.add
+                    .sprite(dot.x, dot.y, TEX_ARROW)
+                    .setTint(ARROW_TINT)
+                    .setScale(DOT_ARROW_SCALE)
+                    .setDepth(6);
+                this.dotArrows[note.noteIndex] = arrow;
+            }
+            arrow.setRotation(LANE_ROTATION[note.lane]).setVisible(true);
+        }
     }
 
     /** Transient DOM judgment popup; the CSS animation floats and fades it. */

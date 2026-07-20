@@ -29,14 +29,39 @@ export class ShineSynth {
         this.blip(LANE_FREQ[lane], 0.14, 'square', 0.09);
     }
 
-    /** Beat tick; slot starts are accented. Muted by the caller while music plays. */
-    tick(accent: boolean): void {
-        this.blip(accent ? 1500 : 1100, 0.03, 'sine', accent ? 0.1 : 0.06);
-    }
-
-    /** Two rising notes on the hand-over rest slot: "your turn" in audio. */
-    countIn(step: 0 | 1): void {
-        this.blip(step === 0 ? 880 : 1174.66, 0.09, 'triangle', 0.12);
+    /**
+     * A referee-style whistle blown once per beat — the constant tempo keeper
+     * (Super Mario Party's Time to Shine: timing is the whistle + the
+     * spotlight). Bright and loud so it carries over everything; a fast pitch
+     * warble gives it the trilled "wheet" of a real whistle rather than a beep.
+     * Muted by the caller while a music track plays.
+     */
+    whistle(): void {
+        const ctx = this.ctx;
+        if (!ctx || ctx.state !== 'running') {
+            return;
+        }
+        const now = ctx.currentTime;
+        const dur = 0.14;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(2100, now);
+        // Trill: an LFO warbles the pitch ±140 Hz ~18×/s — the whistle "roll".
+        const lfo = ctx.createOscillator();
+        const lfoGain = ctx.createGain();
+        lfo.frequency.setValueAtTime(18, now);
+        lfoGain.gain.setValueAtTime(140, now);
+        lfo.connect(lfoGain);
+        lfoGain.connect(osc.frequency);
+        gain.gain.setValueAtTime(0.24, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + dur);
+        lfo.start(now);
+        lfo.stop(now + dur);
     }
 
     /** Bright blip for scoring hits, dull thud for everything else. */

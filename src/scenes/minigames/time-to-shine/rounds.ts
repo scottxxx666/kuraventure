@@ -41,12 +41,22 @@ export interface Chart {
     endMs: number;
 }
 
-/** BPM the beat grid assumes — retune when a real song replaces the placeholder. */
-export const BPM = 100;
-export const BEAT_MS = 60_000 / BPM;
+/**
+ * Beat-grid period; kept an integer so every derived time lands on a whole ms
+ * (the round tests assert exact `% SLOT_MS`). 550 ms ≈ 109 BPM — a touch
+ * quicker than a flat 100. Must stay > 500 or NICE_WINDOW_MS breaks the
+ * judgment invariant (NICE < MIN_NOTE_GAP_MS/2). Retune with a real song.
+ */
+export const BEAT_MS = 550;
+export const BPM = Math.round(60_000 / BEAT_MS);
 /** One pose slot = 2 beats; fixed all run — difficulty ramps via phrase length. */
 export const SLOT_MS = BEAT_MS * 2;
-export const LEAD_IN_MS = 2400;
+/**
+ * Count-in before the first pose. Must be a whole number of BEAT_MS so every
+ * note lands on the same beat grid the whistle/ring use — everything in the
+ * game derives from BEAT_MS, so retuning it keeps the whole game in sync.
+ */
+export const LEAD_IN_MS = 4 * BEAT_MS;
 /** Phrase length (in slots) per round. */
 export const PHRASE_SCHEDULE: readonly number[] = [1, 1, 2, 2, 3, 3, 4, 4];
 /** Closest two notes can sit (a double cell's inner gap) — judgment windows must respect it. */

@@ -15,12 +15,14 @@ shared fail flow runs (same policy as dance).
 
 ## Timeline (all on one beat grid)
 
-- BPM 100 (beat = 600 ms), slot = 2 beats = 1200 ms, fixed tempo all run.
+- ~109 BPM (beat = 550 ms, integer grid), slot = 2 beats = 1100 ms, fixed
+  tempo all run. `BEAT_MS` is the authoritative constant; must stay > 500 ms
+  (judgment invariant `NICE_WINDOW_MS < MIN_NOTE_GAP_MS/2`).
 - Lead-in 2400 ms. Phrase schedule `[1,1,2,2,3,3,4,4]` slots → 8 rounds,
   ~70 s total.
 - Round of length L starting at t0: demo slot i at `t0 + i*SLOT_MS`, one rest
-  slot ("your turn" count-in), response slot i at `t0 + (L+1+i)*SLOT_MS`
-  (pure shift of the demo), one rest slot after.
+  slot (hand-over — the spotlight swaps to the player here), response slot i at
+  `t0 + (L+1+i)*SLOT_MS` (pure shift of the demo), one rest slot after.
 
 ## Judgment
 
@@ -39,11 +41,11 @@ shared fail flow runs (same policy as dance).
 Each independently switchable via `SHINE_FEATURES`:
 
 - `laneTones` — WebAudio-synthesized sound (no assets): a pitch per lane
-  (← ↓ ↑ → = C5 E5 G5 C6) on both demo poses and player presses, metronome
-  tick with a count-in before the response, judgment blips. This is what
+  (← ↓ ↑ → = C5 E5 G5 C6) on both demo poses and player presses, a constant
+  whistle on every beat that keeps the tempo, judgment blips. This is what
   makes the game playable by ear; without a music file the game would
-  otherwise be silent (frame-clock fallback). Metronome mutes itself while a
-  music track is actually playing.
+  otherwise be silent (frame-clock fallback). The whistle plays on **every**
+  beat, including over a real music track (it's the timing cue, not ambience).
 - `rhythmPatterns` — later rounds draw each slot from rhythm cells:
   `single` (note at 0), `double` (notes at 0 and 600 ms), `rest` (no note).
   Rounds 1–4 all single; 5–6 add doubles; 7–8 add doubles + rests. First
@@ -74,35 +76,45 @@ y≈560 (bottom strip belongs to the tap zones).
 
 ## "When do I press?" cues
 
-The game is a **memory + rhythm game**, not a per-note reaction test. The player
-watched the host's rhythm during the demo, so the response is reproduced from
-memory against the beat — no per-note "press now" telegraph. This mirrors
-Headbangers *Rhythm Royale*: the "your turn" prompt teaches the hand-over **once**,
-then the steady tempo (a predictable, always-on channel) carries every following
-turn.
+The game is a **memory + rhythm game**. The player watched the host's rhythm
+*and directions* during the demo, then reproduces the phrase against the beat.
+The response ring now marks *which* progress circle and *when* (timing is
+guided), but the **direction** each pose needs still comes from memory — it is
+only revealed after you get one wrong.
 
-**Implemented — show-once hand-over + audio beat.** The only explicit cues are:
+This builds on the **Super Mario Party model** (verified against the Mario
+Wiki): in SMP's *Time to Shine* the timing is indicated by "the light underneath
+all characters and a whistling noise" — a constant whistle keeping the beat plus
+a spotlight for whose turn. We mirror both, on every beat, and add a per-note
+ring on the progress circles:
 
-- **"Your turn" text, first round only.** `applyPhase()` shows `watch` then the
-  first `your turn`; after the first hand-over the `turnHinted` flag keeps the
-  cue silent for the rest of the run.
+- **Constant whistle** (`ShineSynth.whistle` via `driveBeats`) — a bright,
+  loud, trilled "wheet" on **every beat, all phases, over the music too** (it's
+  the timing cue, not ambience, so it rides on top of a track rather than
+  yielding to it). Synthesized (LFO warble on a ~2.1 kHz sine), no asset.
+- **Per-note ring on the progress circle** (`driveNoteRing`) — during the
+  response phase a ring fades in large on the next unhit progress circle two
+  beats out and shrinks to close on that note's beat (osu!-style approach circle,
+  `approachFrac` with a 2-beat lead + a short alpha fade-in so it doesn't pop).
+  It tells you *which* circle is next and *when* to press, but never *which
+  direction* — that stays in memory. Nothing is drawn until the approach window
+  opens.
 - **Spotlight swap** (`hostLight`/`playerLight` alpha) — ambient whose-turn
-  staging, every round. Tells you the *phase*, not per-note timing.
-- **Count-in metronome** (`driveBeats`/`countInStep`) — two synth beats in the
-  rest slot before each response, plus the steady tick. The rhythmic channel the
-  player presses against. Muted while a real music track plays.
+  staging. Tells you the *phase*, not per-note timing. Flips to the player one
+  slot before their notes start, giving a get-ready lead (SMP's "light").
+- **"Your turn" text, every round** (`applyPhase`) — `watch` during the demo,
+  `your turn` for every response phase.
 
 Mistakes are still surfaced in full — wrong direction (`wrong`), off-timing
-(`early`/`late`), and unhit notes (`miss`) all paint the dot and float a judgment
-popup (`paintDot`/`showPopup`). The cue teaches; the judgment corrects.
+(`early`/`late`), and unhit notes (`miss`) all paint the circle and float a
+judgment popup (`paintDot`/`showPopup`). On a **miss or wrong direction**, the
+circle also reveals the correct arrow (`LANE_ROTATION`) so you learn the pose you
+should have struck; off-timing hits (`early`/`late`) stay colour-only since the
+direction was already right. The cues pace; the judgment corrects.
 
-**Removed — approach ring (`driveTelegraph`).** Previously a shrinking osu!-style
-ring converged onto the next dot at its hit time. Dropped deliberately: it made
-the game a follow-the-ring reaction test and hid the memory/rhythm skill the mode
-is built around. `approachFrac` stays in `judgment.ts` (unused here) in case a
-softer opt-in cue is wanted later.
-
-**Possible later — response-beat audio accent.** For muted/touch play, give beats
-that carry a *response* note a distinct accent/pitch via `ShineSynth` so the ear
-leads the press, without any visual telegraph. Keep it muted while a real music
-track plays (same rule as the metronome).
+**History.** An earlier per-note approach ring on the progress dots
+(`driveTelegraph`) was removed for being a follow-the-cue reaction test that
+gave away the whole phrase. `driveNoteRing` reinstates the per-note ring on the
+now-enlarged circles, but only the *timing* is guided: the **direction stays in
+memory** until an error reveals it, so the memory element lives in *which arrow*,
+not *when*.
