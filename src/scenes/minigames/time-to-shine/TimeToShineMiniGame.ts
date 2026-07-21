@@ -58,7 +58,7 @@ const DOT_IDLE = 0x555070;
 // and *when*; the direction stays in memory (revealed only on an error).
 const DOT_RING_MIN_R = 20; // radius at the beat — hugs just outside the circle
 const DOT_RING_MARGIN_R = 10; // extra radius at the top of the approach
-const DOT_RING_LEAD_MS = BEAT_MS; // approach window — a fast one-beat shrink
+const DOT_RING_LEAD_MS = BEAT_MS / 2; // approach window — a fast one-beat shrink
 const DOT_RING_WIDTH = 4;
 const DOT_RING_COLOR = 0xffe27a;
 const DOT_RING_ALPHA = 0.9;
